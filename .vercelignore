@@ -1,0 +1,26 @@
+# Not uploaded to Vercel. The server only needs backend/ (code + admin panel), dist/ (website)
+# and pyproject.toml.
+
+# Secrets and local data: never upload
+backend/.env
+backend/data/
+*.db
+*.db-wal
+*.db-shm
+
+# Not needed online
+mobile application/
+references/
+source-assets/
+outputs/
+database/
+scripts/
+tests/
+backend/tests/
+docs/
+Dockerfile
+.dockerignore
+.openai/
+.pytest_cache/
+**/__pycache__/
+*.pyc

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>GOTRAJET Admin</title>
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<header class="top">
+  <strong>GOTRAJET <span>Admin</span></strong>
+  <span id="mode" class="pill"></span>
+  <span class="spacer"></span>
+  <span id="who"></span>
+  <button id="logout" class="ghost" hidden>Déconnexion</button>
+</header>
+
+<main id="login-view" hidden>
+  <form id="login" class="card login">
+    <h1>Espace équipe</h1>
+    <label>E-mail<input name="email" type="email" required autocomplete="username"></label>
+    <label>Mot de passe<input name="password" type="password" required autocomplete="current-password"></label>
+    <label id="otp-row" hidden>Code de l’application d’authentification<input name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code"></label>
+    <div id="captcha"></div>
+    <button>Se connecter</button>
+    <p id="login-error" class="error" role="alert"></p>
+  </form>
+</main>
+
+<main id="app-view" hidden>
+  <nav id="tabs" role="tablist">
+    <button data-tab="overview" class="active">Vue d’ensemble</button>
+    <button data-tab="docs">Vérifications <b data-count="pendingDocs"></b></button>
+    <button data-tab="disputes">Litiges <b data-count="openDisputes"></b></button>
+    <button data-tab="payouts">Retraits <b data-count="requestedPayouts"></b></button>
+    <button data-tab="parcels">Colis</button>
+    <button data-tab="users">Utilisateurs</button>
+    <button data-tab="cash">Recharges espèces</button>
+    <button data-tab="tickets">Support <b data-count="openTickets"></b></button>
+    <button data-tab="audit">Journal</button>
+  </nav>
+  <section id="panel" class="card" aria-live="polite"></section>
+</main>
+
+<dialog id="viewer"><form method="dialog"><button class="ghost close">Fermer ✕</button></form><div id="viewer-body"></div></dialog>
+<div id="toast" role="status"></div>
+<script src="admin.js"></script>
+</body>
+</html>

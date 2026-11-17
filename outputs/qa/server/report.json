@@ -1,0 +1,15 @@
+{
+  "steps": [
+    "Private page redirects to login",
+    "Test Sender signed in, balance 500 MAD",
+    "Parcel GJU9MA7B booked from the wallet (450 MAD left)",
+    "Test Traveler accepted the request",
+    "Parcel picked up",
+    "Wrong code refused; right code delivered; traveller earned 46.50 MAD",
+    "Sender sees the parcel delivered",
+    "Chat message received by the traveller",
+    "47 screens × 3 languages render for the sender",
+    "Admin panel: all tabs load"
+  ],
+  "errors": []
+}

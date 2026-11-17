@@ -1,0 +1,20 @@
+# Used by Vercel to run the GOTRAJET server (website + API + admin) as one Python function.
+# Guide: docs/test-server.md.  Local runs still use backend/requirements.txt.
+[project]
+name = "gotrajet"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sqlalchemy>=2.0",
+    "pydantic>=2.7",
+    "PyJWT>=2.8",
+    "python-multipart>=0.0.9",
+    "python-dotenv>=1.0",
+    "httpx>=0.27",
+    "psycopg[binary]>=3.2",
+]
+
+[tool.vercel]
+entrypoint = "backend.app.main:app"

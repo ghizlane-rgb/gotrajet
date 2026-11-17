@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#0b3052" />
+    <meta name="color-scheme" content="light dark" />
+    <title>GOTRAJET — Le colis trouve son chemin</title>
+    <meta
+      name="description"
+      content="GOTRAJET, le transport collaboratif de colis au Maroc. Trouvez un voyageur, proposez un trajet et suivez vos envois."
+    />
+    <meta name="application-name" content="GOTRAJET" />
+    <meta name="apple-mobile-web-app-title" content="GOTRAJET" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- Social sharing -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GOTRAJET" />
+    <meta property="og:title" content="GOTRAJET — Le colis trouve son chemin" />
+    <meta
+      property="og:description"
+      content="Le transport collaboratif de colis au Maroc : envoyez avec des voyageurs déjà en route, suivez chaque étape."
+    />
+    <meta property="og:image" content="assets/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="fr_MA" />
+    <meta property="og:locale:alternate" content="en_GB" />
+    <meta property="og:locale:alternate" content="ar_MA" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="assets/og-image.jpg" />
+
+    <!-- Icons and installable web app -->
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="assets/icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+
+    <!-- Performance: fetch the hero photograph and primary fonts early -->
+    <link rel="preload" as="image" href="assets/gotrajet-road.webp" type="image/webp" />
+    <link rel="preload" as="font" href="assets/font-0.woff2" type="font/woff2" crossorigin />
+    <link rel="preload" as="font" href="assets/font-8.woff2" type="font/woff2" crossorigin />
+
+    <link rel="stylesheet" href="assets/fonts.css" />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/features.css" />
+    <link rel="stylesheet" href="css/site.css" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "GOTRAJET",
+        "slogan": "Plus loin, ensemble.",
+        "description": "Collaborative parcel delivery connecting senders with travellers on journeys already planned across Morocco.",
+        "areaServed": { "@type": "Country", "name": "Morocco" },
+        "knowsLanguage": ["fr", "en", "ar"],
+        "logo": "assets/icon-512.png"
+      }
+    </script>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <a href="#home" class="brand"
+        ><span class="logo">G<span>⬡</span></span
+        ><b>GOTRA<span>JET</span></b></a
+      >
+      <div class="workspace">VOTRE ESPACE</div>
+      <nav id="nav"></nav>
+      <div class="side-bottom">
+        <div class="eco">
+          ♧<b>Un trajet, plus d’impact.</b>
+          <p>Vos déplacements font avancer les colis.</p>
+        </div>
+        <button class="support" data-page="help">
+          ⓘ &nbsp; Aide et support</button
+        ><button class="user" data-page="profile">
+          <span class="avatar">IS</span
+          ><span><b>Ikram Slimani</b><small>Mon compte personnel</small></span
+          ><span>›</span>
+        </button>
+      </div>
+    </aside>
+    <div class="shell">
+      <header class="topbar">
+        <a href="#home" class="mobile-brand">GOTRA<span>JET</span></a>
+        <div class="breadcrumb">
+          Mon espace <span>/</span> <b id="crumb">Accueil</b>
+        </div>
+        <div class="top-actions">
+          <span class="demo">Démo interactive</span
+          ><button
+            id="notifications"
+            aria-label="Notifications"
+            class="icon-button"
+          >
+            ♧<i></i></button
+          ><button data-page="profile" class="avatar small">IS</button>
+        </div>
+      </header>
+      <main id="main"></main>
+      <footer>
+        © 2026 GOTRAJET <span>Plus proche. Plus flexible. Plus durable.</span
+        ><a href="#help">Aide & confidentialité</a>
+      </footer>
+    </div>
+    <div id="modal" class="modal" hidden aria-hidden="true">
+      <div
+        class="modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="GOTRAJET"
+      >
+        <button id="close-modal" class="close" aria-label="Fermer">×</button>
+        <div id="modal-content"></div>
+      </div>
+    </div>
+    <div id="toast" role="status"></div>
+    <noscript>
+      <div class="noscript">
+        GOTRAJET nécessite JavaScript. · GOTRAJET requires JavaScript. · يتطلب GOTRAJET تفعيل JavaScript.
+      </div>
+    </noscript>
+    <script src="js/i18n.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/server.js"></script>
+  </body>
+</html>

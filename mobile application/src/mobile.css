@@ -1,0 +1,210 @@
+/* GOTRAJET mobile application layer.
+   Loaded after the website's own CSS (style.css → features.css → site.css).
+   It does not change any screen: it only adapts the website to run as an app
+   (notch / home-indicator safe areas, touch behaviour, offline banner). */
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* Native feel: no grey flash on tap, no double-tap zoom delay, no rubber-band reload */
+html.gj-app {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+html.gj-app body {
+  overscroll-behavior-y: none;
+}
+html.gj-app a,
+html.gj-app button,
+html.gj-app label,
+html.gj-app select,
+html.gj-app [data-go],
+html.gj-app [data-action] {
+  touch-action: manipulation;
+}
+html.gj-app button,
+html.gj-app .nav-link,
+html.gj-app .btn,
+html.gj-app .brand,
+html.gj-app .mobile-brand {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+html.gj-app img {
+  -webkit-user-drag: none;
+}
+
+/* Safe areas (phones with a notch, punch-hole camera or home indicator) */
+html.gj-app body {
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+html.gj-app .topbar {
+  padding-top: var(--safe-top);
+  height: calc(65px + var(--safe-top));
+  box-sizing: border-box;
+}
+html.gj-app .site-header {
+  padding-top: var(--safe-top);
+}
+html.gj-app .scroll-progress {
+  top: var(--safe-top);
+}
+html.gj-app .modal {
+  padding-top: calc(20px + var(--safe-top));
+  padding-bottom: calc(20px + var(--safe-bottom));
+}
+html.gj-app #toast {
+  bottom: calc(30px + var(--safe-bottom));
+}
+
+@media (max-width: 1040px) {
+  html.gj-app .site-nav {
+    top: calc(76px + var(--safe-top));
+  }
+}
+
+@media (min-width: 561px) {
+  html.gj-app .sidebar {
+    padding-top: calc(25px + var(--safe-top));
+    padding-bottom: calc(20px + var(--safe-bottom));
+  }
+  html.gj-app .topbar {
+    height: auto;
+    min-height: 65px;
+  }
+}
+
+@media (max-width: 560px) {
+  /* Bottom tab bar sits above the home indicator */
+  html.gj-app .sidebar {
+    height: calc(70px + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
+    box-sizing: border-box;
+  }
+  html.gj-app .shell {
+    padding-bottom: calc(70px + var(--safe-bottom));
+  }
+  html.gj-app #toast {
+    bottom: calc(86px + var(--safe-bottom));
+  }
+  /* Phone screens: modals rise from the bottom like a native sheet */
+  html.gj-app .modal {
+    place-items: end center;
+    padding: var(--safe-top) 0 0;
+  }
+  html.gj-app .modal-panel {
+    width: 100%;
+    max-height: calc(92vh - var(--safe-top));
+    border-radius: 20px 20px 0 0;
+    padding-bottom: calc(32px + var(--safe-bottom));
+    animation: gj-sheet-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+@keyframes gj-sheet-in {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+}
+
+/* Connection banner (the bundled app works offline; maps need the network) */
+.gj-net {
+  position: fixed;
+  left: 50%;
+  top: calc(10px + var(--safe-top));
+  transform: translate(-50%, -150%);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: #0b3052;
+  color: #fff;
+  font: 600 12px/1.3 "DM Sans", system-ui, sans-serif;
+  box-shadow: 0 10px 30px #00152e40;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: none;
+}
+.gj-net.show {
+  transform: translate(-50%, 0);
+}
+.gj-net::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff8616;
+  flex: none;
+}
+.gj-net.online::before {
+  background: #19876c;
+}
+
+/* Install prompt (browser only, before the app is installed) */
+.gj-install {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(82px + var(--safe-bottom));
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px 12px 14px;
+  border-radius: 14px;
+  background: #fff;
+  color: #0b3052;
+  box-shadow: 0 16px 40px #00152e33;
+  font: 500 13px/1.35 "DM Sans", system-ui, sans-serif;
+  animation: gj-sheet-in 0.3s ease;
+}
+.gj-install img {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  flex: none;
+}
+.gj-install span {
+  flex: 1;
+  min-width: 0;
+}
+.gj-install b {
+  display: block;
+  font-family: Manrope, "DM Sans", sans-serif;
+}
+.gj-install button {
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font: 700 12px "DM Sans", sans-serif;
+  background: #ff8616;
+  color: #fff;
+}
+.gj-install button.gj-install-close {
+  background: transparent;
+  color: #6b7a8c;
+  padding: 6px 8px;
+  font-size: 18px;
+  line-height: 1;
+}
+@media (min-width: 561px) {
+  .gj-install {
+    left: auto;
+    right: 20px;
+    bottom: calc(20px + var(--safe-bottom));
+    width: 360px;
+  }
+}
+body.dark .gj-install {
+  background: #13243a;
+  color: #eef3f8;
+}

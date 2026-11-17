@@ -1,0 +1,8 @@
+# Installed packages
+node_modules/
+
+# Generated: rebuilt from ../dist by `npm run build`
+www/
+
+# Generated: APK and test screenshots
+build/

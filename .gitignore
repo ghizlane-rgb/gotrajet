@@ -1,0 +1,14 @@
+# Secrets and live data: never commit
+backend/.env
+backend/data/
+*.db
+*.db-wal
+*.db-shm
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Vercel CLI link (per computer)
+.vercel/

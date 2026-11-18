@@ -73,7 +73,7 @@ gotrajet/
 
 - Sticky header (transparent over the hero, frosted on scroll) with section links, language picker, sign-in and sign-up; burger menu below 1040px, closable with Escape.
 - Hero with the live trip search (send / travel tabs), key figures, and "continue as a guest".
-- How it works with a sender / traveler switch, popular routes (real demo trips), why GOTRAJET, a traveler earnings calculator (same 7% fee formula as `#publish`), trust & safety with the handoff-code illustration, community reviews (labelled as demo), FAQ, final call to action and a four-column footer.
+- How it works with a sender / traveler switch, popular routes (real demo trips), why GOTRAJET, a traveler earnings calculator (same 10% fee formula as `#publish`), trust & safety with the handoff-code illustration, community reviews (labelled as demo), FAQ, final call to action and a four-column footer.
 - Fully translated (FR/EN/AR), mirrored in Arabic, dark-mode aware, and animated with scroll reveals that respect `prefers-reduced-motion`.
 
 ## International & performance

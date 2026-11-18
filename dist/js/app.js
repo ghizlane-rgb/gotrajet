@@ -908,7 +908,7 @@ function landingSafety() {
     )}</ul>${btn(t("help") + icon("arrow", "flip"), "help", "outline")}</div></div></section>`;
 }
 function calcTotal() {
-  return calc.parcels * calc.price * 0.93;
+  return calc.parcels * calc.price * (1 - COMMISSION);
 }
 function landingTravel() {
   return `<section class="site-travel" id="travel"><div class="site-container travel-split"><div class="travel-copy reveal"><span class="site-eyebrow">${t("forTravelers")}</span><h2>${t("promoTitle")}</h2><p>${t("onboard2Sub")}</p><ul class="travel-points">${[
@@ -1365,7 +1365,7 @@ function notifications() {
         ? list
             .map(
               (n) =>
-                `<button class="notification-row ${n.read ? "read" : ""}" data-action="read-notification" data-value="${esc(n.id)}"><span class="notification-icon">${icon(n.key === "newMessage" ? "chat" : n.key === "paymentConfirmed" ? "wallet" : n.key === "routeAlert" ? "bell" : "box")}</span><span><b>${t(n.key)}</b><small>${esc(n.body)}</small></span>${n.read ? "" : '<i class="unread-dot"></i>'}</button>`,
+                `<button class="notification-row ${n.read ? "read" : ""}" data-action="read-notification" data-value="${esc(n.id)}"><span class="notification-icon">${icon(n.key === "newMessage" ? "chat" : ["paymentConfirmed", "subscriptionPaid", "cancelFeeRefunded"].includes(n.key) ? "wallet" : n.key === "routeAlert" ? "bell" : "box")}</span><span><b>${t(n.key)}</b><small>${esc(n.body)}</small></span>${n.read ? "" : '<i class="unread-dot"></i>'}</button>`,
             )
             .join("")
         : `<div class="empty">${t("empty")}</div>`,
@@ -1860,7 +1860,9 @@ const SPACE_NAV = {
     ["messages", "chat", "messages"],
   ],
 };
-const COMMISSION = 0.07;
+/* Traveller pricing (same defaults as backend/app/config.py; server.js replaces them with the server's values). */
+let COMMISSION = 0.1;
+let PLAN = { monthlyFee: 100, cancelFeeRate: 0.02, maxCancelsPerMonth: 30 };
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
 const netOf = (price) => round2(Number(price) * (1 - COMMISSION));
 
@@ -2168,7 +2170,7 @@ function requestActions(r, compact = false) {
   if (r.status === "awaiting")
     return `<button class="btn" data-action="accept-request" data-value="${esc(r.id)}">${icon("check")}${t("accept")}</button><button class="btn outline" data-action="decline-request" data-value="${esc(r.id)}">${t("decline")}</button>${compact ? btn(t("details"), "request/" + r.id, "ghost") : ""}`;
   if (r.status === "accepted")
-    return `<button class="btn blue" data-action="pickup-request" data-value="${esc(r.id)}">${icon("box")}${t("confirmPickup")}</button>${compact ? "" : contact}`;
+    return `<button class="btn blue" data-action="pickup-request" data-value="${esc(r.id)}">${icon("box")}${t("confirmPickup")}</button>${compact ? "" : contact + `<button class="btn outline danger-outline" data-action="cancel-accepted" data-value="${esc(r.id)}">${t("cancelParcel")}</button>`}`;
   if (r.status === "pickedUp")
     return `<button class="btn" data-action="deliver-request" data-value="${esc(r.id)}">${icon("shield")}${t("confirmDelivery")}</button>${compact ? "" : contact}`;
   return compact ? btn(t("details"), "request/" + r.id, "ghost") : "";
@@ -2218,6 +2220,67 @@ function nextTripCard(trip) {
       : `<p class="muted">${t("empty")}</p>`
   }<div class="detail-actions">${btn(t("allDetails") + icon("arrow", "flip"), "trip/" + trip.id, "")}</div></section>`;
 }
+/* ---------- Traveller account: balance, top-up, monthly subscription, cancellations ----------
+   Demo: kept on this device. server.js replaces planState / travelerCancellations / takeSubscription
+   with the account's real data, and the server enforces every rule. */
+const pct = (r) => new Intl.NumberFormat(locale(), { style: "percent", maximumFractionDigits: 1 }).format(r);
+function planState() {
+  const p = (state.plan ??= { paid: [], cancellations: [] });
+  const month = today().slice(0, 7);
+  return {
+    month,
+    monthlyFee: PLAN.monthlyFee,
+    subscriptionPaid: p.paid.includes(month),
+    commissionRate: COMMISSION,
+    cancelFeeRate: PLAN.cancelFeeRate,
+    cancelsThisMonth: p.cancellations.filter((c) => String(c.date).slice(0, 7) === month).length,
+    maxCancelsPerMonth: PLAN.maxCancelsPerMonth,
+  };
+}
+function travelerCancellations() {
+  return state.plan?.cancellations || [];
+}
+/* Takes the monthly fee from the balance once a month; returns false (and explains) when the balance is too low. */
+function takeSubscription() {
+  const s = planState();
+  if (s.subscriptionPaid) return true;
+  if (state.balance < s.monthlyFee) {
+    subscriptionModal();
+    return false;
+  }
+  state.balance = round2(state.balance - s.monthlyFee);
+  state.plan.paid.push(s.month);
+  transaction("subscriptionFee", -s.monthlyFee, s.month);
+  persist();
+  toast(fill("subscriptionTaken", { fee: money(s.monthlyFee) }));
+  return true;
+}
+function subscriptionModal() {
+  const s = planState();
+  modal(`<h2>${t("subscriptionRequired")}</h2><p>${fill("subscriptionRequiredSub", { fee: money(s.monthlyFee) })}</p><div class="payment-row"><span>${t("accountBalance")}</span><b>${money(state.balance)}</b></div><div class="detail-actions"><button class="btn" data-action="topup" data-value="traveler">${icon("plus")}${t("topupAccount")}</button><button class="btn outline" data-action="close">${t("cancel")}</button></div>`);
+}
+const monthLabel = (m) => new Date(m + "-15T12:00:00").toLocaleDateString(locale(), { month: "long", year: "numeric" });
+function claimBadge(c) {
+  if (c.claimStatus === "pending") return `<span class="badge status-pending">${t("claimPending")}</span>`;
+  if (c.claimStatus === "refunded") return `<span class="badge status-delivered">${t("claimRefunded")}</span>`;
+  if (c.claimStatus === "rejected") return `<span class="badge status-cancelled">${t("claimRejected")}</span>`;
+  return Number(c.fee) > 0 ? `<button class="text-link" data-action="claim-fee" data-value="${esc(c.id)}">${t("makeClaim")}</button>` : "";
+}
+function cancellationsList() {
+  const list = travelerCancellations();
+  if (!list.length) return "";
+  return `<details class="cancel-list"><summary>${t("myCancellations")} (${list.length})</summary>${list
+    .map(
+      (c) =>
+        `<div class="payment-row"><span><b>#${esc(c.parcelId)}</b><small class="block">${dateText(c.date)}${c.claimAnswer ? " · " + esc(c.claimAnswer) : ""}</small></span><span class="cancel-row-end"><strong>${Number(c.fee) ? "− " + money(c.fee) : money(0)}</strong>${claimBadge(c)}</span></div>`,
+    )
+    .join("")}</details>`;
+}
+function travelerAccount() {
+  const s = planState();
+  const left = Math.max(0, s.maxCancelsPerMonth - s.cancelsThisMonth);
+  return `<section class="account-panel panel" aria-label="${t("accountBalance")}"><div class="account-balance"><small>${t("accountBalance")}</small><strong>${money(state.balance)}</strong><div class="detail-actions"><button class="btn" data-action="topup" data-value="traveler">${icon("plus")}${t("topupAccount")}</button>${btn(t("transactions"), "wallet", "outline")}</div><small class="account-ways">${icon("card")}${t("card")} · ${icon("wallet")}Cash Plus</small></div><div class="account-facts"><div class="account-fact ${s.subscriptionPaid ? "ok" : "due"}"><span class="account-fact-icon">${icon(s.subscriptionPaid ? "check" : "calendar")}</span><div><b>${t("subscription")} · ${monthLabel(s.month)}</b><small>${s.subscriptionPaid ? fill("subscriptionPaidLabel", { fee: money(s.monthlyFee) }) : fill("subscriptionDue", { fee: money(s.monthlyFee) })}</small></div>${s.subscriptionPaid ? "" : `<button class="btn" data-action="pay-subscription">${t("payNow")}</button>`}</div><div class="account-fact"><span class="account-fact-icon">${icon("wallet")}</span><div><b>${fill("commissionLabel", { rate: pct(s.commissionRate) })}</b><small>${t("commissionSub")}</small></div></div><div class="account-fact ${left === 0 ? "due" : ""}"><span class="account-fact-icon">${icon("alert")}</span><div><b>${fill("cancelsLabel", { n: s.cancelsThisMonth, max: s.maxCancelsPerMonth })}</b><small>${fill("cancelsSub", { rate: pct(s.cancelFeeRate) })}</small></div></div></div>${cancellationsList()}</section>`;
+}
 function travelerSpace() {
   const trips = myTripsAll();
   const next = trips
@@ -2229,6 +2292,7 @@ function travelerSpace() {
   return (
     spaceHero("traveler") +
     verificationBanner() +
+    travelerAccount() +
     `<div class="kpi-grid">${kpi("wallet", money(e.thisMonth), t("kpiMonthEarnings"), "orange")}${kpi("clock", money(e.pending), t("kpiPendingEarnings"), "blue")}${kpi("bell", waiting.length, t("kpiRequests"), waiting.length ? "alert" : "")}${kpi("box", e.delivered.length, t("kpiCarried"), "green")}</div>` +
     `<div class="space-columns"><div>${next ? nextTripCard(next) : panel(`<p>${t("noTripYet")}</p>${btn(t("propose"), "publish", "")}`)}</div><div>${panel(
       `<div class="section-heading"><h2>${t("toHandle")}</h2><a class="text-link" href="#requests">${t("seeAll")} →</a></div>${waiting.length ? waiting.slice(0, 3).map(requestMini).join("") : `<p class="muted">${t("noRequests")}</p>`}`,
@@ -2708,7 +2772,7 @@ function setupPage() {
     $("#publish-form").addEventListener("input", (e) => {
       const f = e.currentTarget;
       $("#earnings").textContent = money(
-        Number(f.elements.price.value) * Number(f.elements.seats.value) * 0.93,
+        Number(f.elements.price.value) * Number(f.elements.seats.value) * (1 - COMMISSION),
       );
     });
   }
@@ -3145,6 +3209,7 @@ const actions = {
     const trip = reqTrip(r);
     if (tripLoad(trip).count >= Number(trip.seats) || Number(r.weight) > Number(trip.weight))
       return toast(t("capacityFull"));
+    if (!takeSubscription()) return;
     changeTravel(state.incoming, r.id, { status: "accepted", acceptedAt: new Date().toISOString() });
     toast(t("requestAcceptedT"));
     render();
@@ -3159,6 +3224,35 @@ const actions = {
     toast(t("requestDeclinedT"));
     render();
   },
+  "pay-subscription": () => {
+    if (takeSubscription()) render();
+  },
+  // Traveller cancels a parcel they accepted: fee, monthly limit, sender refunded in full
+  "cancel-accepted": (el) => {
+    const r = getIncoming(el.dataset.value);
+    if (!r) return;
+    const s = planState();
+    const fee = round2(Number(r.price) * s.cancelFeeRate);
+    if (s.cancelsThisMonth >= s.maxCancelsPerMonth)
+      return modal(`<h2>${t("cancelParcel")}</h2><div class="notice">${fill("cancelLimitReached", { max: s.maxCancelsPerMonth })}</div><button class="btn outline wide" data-action="close">${t("close")}</button>`);
+    modal(`<h2>${t("cancelParcel")} #${esc(r.id)}</h2><p>${t("cancelParcelSub")}</p><div class="payment-row"><span>${fill("cancelFeeLine", { rate: pct(s.cancelFeeRate) })}</span><b>− ${money(fee)}</b></div><div class="payment-row"><span>${t("cancelsLabelShort")}</span><b>${s.cancelsThisMonth + 1} / ${s.maxCancelsPerMonth}</b></div><p class="map-note">${t("cancelClaimHint")}</p><div class="detail-actions"><button class="btn danger" data-action="confirm-cancel-accepted" data-value="${esc(r.id)}">${t("cancelParcel")}</button><button class="btn outline" data-action="close">${t("back")}</button></div>`);
+  },
+  "confirm-cancel-accepted": (el) => {
+    const r = getIncoming(el.dataset.value);
+    const s = planState();
+    if (!r || r.status !== "accepted" || s.cancelsThisMonth >= s.maxCancelsPerMonth) return closeModal();
+    const fee = round2(Number(r.price) * s.cancelFeeRate);
+    changeTravel(state.incoming, r.id, { status: "declined" });
+    state.balance = round2(state.balance - fee);
+    transaction("cancelFee", -fee, "#" + r.id);
+    state.plan.cancellations.unshift({ id: id("X"), parcelId: r.id, fee, claimStatus: "none", claimAnswer: "", date: today() });
+    persist();
+    closeModal();
+    toast(fill("cancelDoneT", { fee: money(fee) }));
+    render();
+  },
+  "claim-fee": (el) =>
+    modal(`<h2>${t("makeClaim")}</h2><p>${t("claimSub")}</p><form id="claim-form" data-id="${esc(el.dataset.value)}"><label class="form-label">${t("claimReason")}<textarea name="reason" required minlength="10" maxlength="2000" rows="4"></textarea></label><button class="btn wide">${t("sendClaim")}</button></form>`),
   "pickup-request": (el) => {
     changeTravel(state.incoming, el.dataset.value, { status: "pickedUp", pickedAt: new Date().toISOString() });
     toast(t("pickupConfirmed"));
@@ -3281,9 +3375,10 @@ const actions = {
     closeModal();
     render();
   },
-  topup: () =>
+  // Travellers top up their account in two ways: Cash Plus agency or bank card
+  topup: (el) =>
     modal(
-      `<h2>${t("topup")}</h2><form id="topup-form">${field(t("amount"), "amount", 100, "number", 'required min="1" max="10000" step="0.01"')}<fieldset class="topup-methods"><legend>${t("topupMethod")}</legend><label class="payment-option"><input type="radio" name="method" value="card" checked>${icon("card")}<span>${t("card")}<small class="block">${t("topupNote")}</small></span></label>${CASH_NETWORKS.map((n) => `<label class="payment-option"><input type="radio" name="method" value="${esc(n)}">${icon("wallet")}<span>${esc(n)}<small class="block">${t("cashOption")}</small></span></label>`).join("")}</fieldset><button class="btn wide">${t("confirm")}</button></form>`,
+      `<h2>${t(el?.dataset?.value === "traveler" ? "topupAccount" : "topup")}</h2><form id="topup-form">${field(t("amount"), "amount", el?.dataset?.value === "traveler" ? PLAN.monthlyFee : 100, "number", 'required min="1" max="10000" step="0.01"')}<fieldset class="topup-methods"><legend>${t("topupMethod")}</legend><label class="payment-option"><input type="radio" name="method" value="card" checked>${icon("card")}<span>${t("card")}<small class="block">${t("topupNote")}</small></span></label>${(el?.dataset?.value === "traveler" ? ["Cash Plus"] : CASH_NETWORKS).map((n) => `<label class="payment-option"><input type="radio" name="method" value="${esc(n)}">${icon("wallet")}<span>${esc(n)}<small class="block">${t("cashOption")}</small></span></label>`).join("")}</fieldset><button class="btn wide">${t("confirm")}</button></form>`,
     ),
   "cash-show": (el) => {
     const c = state.cashTopups.find((x) => x.id === el.dataset.value);
@@ -3373,6 +3468,16 @@ const actions = {
   },
 };
 const submits = {
+  "claim-form": (form) => {
+    const c = travelerCancellations().find((x) => x.id === form.dataset.id);
+    if (!c || c.claimStatus !== "none") return closeModal();
+    c.claimStatus = "pending";
+    c.claimReason = new FormData(form).get("reason").trim();
+    persist();
+    closeModal();
+    toast(t("claimSentT"));
+    render();
+  },
   "request-handoff-form": (form) => {
     const r = getIncoming(form.dataset.id);
     if (!r || new FormData(form).get("code") !== r.code) return toast(t("wrongCode"));
@@ -3461,6 +3566,7 @@ const submits = {
     if (d.from === d.to) return toast(t("sameCity"));
     if (new Date(d.date + "T" + d.time).getTime() <= Date.now())
       return toast(t("dateError"));
+    if (!takeSubscription()) return;
     const p = {
       ...d,
       id: id("TR"),

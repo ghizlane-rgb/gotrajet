@@ -245,6 +245,22 @@ class AuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now)
 
 
+class TravelerCancellation(Base):
+    """A traveller cancelled a parcel they had accepted: the sender is refunded in full and the traveller
+    pays a fee. The traveller may file a claim; support refunds the fee or rejects the claim.
+    New table, so existing databases need no migration."""
+    __tablename__ = "traveler_cancellations"
+    id: Mapped[str] = mapped_column(String(20), primary_key=True, default=lambda: new_id("X"))
+    parcel_id: Mapped[str] = mapped_column(ForeignKey("parcels.id", ondelete="CASCADE"), index=True)
+    traveler_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    fee_cents: Mapped[int] = mapped_column(Integer, default=0)
+    claim_status: Mapped[str] = mapped_column(String(20), default="none")  # none | pending | refunded | rejected
+    claim_reason: Mapped[str] = mapped_column(Text, default="")
+    claim_answer: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class RouteAlert(Base):
     """"Tell me when someone travels Fès → Tanger": a sender is notified when a matching trip is published
     (direct, or a longer trip that passes through both cities). New table, so existing databases need no migration."""

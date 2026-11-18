@@ -7,7 +7,7 @@
   const SANDBOX = !!window.GJ_SERVER.sandbox;
   // Wording that changes when money is real
   phrase("withdraw", "Retirer mes gains", "Withdraw my earnings", "سحب أرباحي");
-  phrase("earningsNote", "Gains après la commission GOTRAJET de 7 %. Ils sont versés dans votre solde à chaque livraison confirmée par code.", "Earnings after the 7% GOTRAJET fee. They reach your balance each time a delivery is confirmed with the code.", "الأرباح بعد عمولة GOTRAJET البالغة 7%. تُضاف إلى رصيدك عند كل تسليم مؤكد بالرمز.");
+  phrase("earningsNote", "Gains après la commission GOTRAJET de 10 %. Ils sont versés dans votre solde à chaque livraison confirmée par code.", "Earnings after the 10% GOTRAJET fee. They reach your balance each time a delivery is confirmed with the code.", "الأرباح بعد عمولة GOTRAJET البالغة 10%. تُضاف إلى رصيدك عند كل تسليم مؤكد بالرمز.");
   const PUBLIC_PAGES = ["welcome", "onboarding", "login", "register", "forgot", "reset", "home", "results", "detail", "help", "about", "impact", "terms", "privacy", "directory"];
   const S = { me: null, trips: [], tripsAt: 0, earnings: {}, received: [], conversations: [], lastJson: "", ready: false };
 
@@ -68,6 +68,7 @@
     return data;
   }
   function fail(e) {
+    if (e?.detail === "subscription_unpaid") return subscriptionModal(); // explains the fee + top-up button
     const key = "err_" + (e?.detail || "error");
     toast(COPY[key] ? t(key) : t("err_error"));
   }
@@ -107,6 +108,12 @@
     state.incoming = b.incoming;
     state.published = b.myTrips.map((p) => ({ ...p, vehicleModel: p.vehicleModel || t(p.vehicle) }));
     state.notifications = b.notifications;
+    S.plan = b.plan;
+    S.cancellations = b.cancellations || [];
+    if (b.plan) {
+      COMMISSION = b.plan.commissionRate;
+      PLAN = { monthlyFee: b.plan.monthlyFee, cancelFeeRate: b.plan.cancelFeeRate, maxCancelsPerMonth: b.plan.maxCancelsPerMonth };
+    }
     state.tickets = b.tickets.map((x) => ({ ...x, description: x.message }));
     state.reviews = b.reviews.given;
     S.received = b.reviews.received;
@@ -194,6 +201,31 @@
   };
   localNote = () =>
     SANDBOX ? `<div class="notice demo-notice">${icon("shield")}${t("sandboxNote")}</div>` : "";
+
+  /* ---------- Traveller plan: the server takes the subscription and fees and enforces the limits ---------- */
+  const basePlanState = planState;
+  planState = () => S.plan || basePlanState();
+  travelerCancellations = () => S.cancellations || [];
+  takeSubscription = () => true; // checked by the server on publish / accept (402 → subscriptionModal)
+  actions["pay-subscription"] = async () => {
+    if (await run(() => api("/api/me/subscription/pay", { method: "POST" }))) {
+      await afterChange();
+      toast(fill("subscriptionTaken", { fee: money(PLAN.monthlyFee) }));
+    }
+  };
+  actions["confirm-cancel-accepted"] = async (el) => {
+    const res = await run(() => api(`/api/parcels/${el.dataset.value}/decline`, { method: "POST" }));
+    if (!res) return;
+    await afterChange();
+    toast(fill("cancelDoneT", { fee: money(res.cancelFee || 0) }));
+  };
+  submits["claim-form"] = async (form) => {
+    const reason = new FormData(form).get("reason").trim();
+    if (await run(() => api(`/api/me/cancellations/${encodeURIComponent(form.dataset.id)}/claim`, { method: "POST", body: { reason } }))) {
+      await afterChange();
+      toast(t("claimSentT"));
+    }
+  };
 
   /* ---------- Route alerts (stored on the account; the server notifies when a matching trip is published) ---------- */
   routeAlerts = () => S.alerts || [];

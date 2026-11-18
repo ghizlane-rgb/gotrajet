@@ -81,10 +81,22 @@ with sync_playwright() as pw:
     step(f"Parcel {pid} booked from the wallet (450 MAD left)")
 
     login(tr, "traveler.test@example.com")
+    go(tr, "space-traveler")
+    assert tr.locator(".account-panel .account-fact.due").count() >= 1  # subscription not paid yet
     go(tr, "requests")
     tr.click(f"[data-action=accept-request][data-value='{pid}']")
+    # 0 MAD on the account: the 100 MAD monthly subscription cannot be taken → top-up window
+    tr.wait_for_selector("#modal [data-action=topup][data-value=traveler]")
+    assert tr.evaluate("(id) => getIncoming(id).status", pid) == "awaiting"
+    tr.click("#modal [data-action=topup][data-value=traveler]")
+    tr.fill("#topup-form [name=amount]", "100")
+    tr.click("#topup-form .btn")
+    until(tr, "() => state.balance === 100")
+    step("Traveller without balance asked to top up (bank card, 100 MAD)")
+    tr.click(f"[data-action=accept-request][data-value='{pid}']")
     until(tr, "(id) => getIncoming(id).status === 'accepted'", arg=pid)
-    step("Test Traveler accepted the request")
+    until(tr, "() => state.balance === 0 && window.GJ.S.plan.subscriptionPaid")
+    step("Test Traveler accepted the request; 100 MAD subscription taken")
     go(tr, "request/" + pid)
     tr.click(f"[data-action=pickup-request][data-value='{pid}']")
     until(tr, "(id) => getIncoming(id).status === 'pickedUp'", arg=pid)
@@ -97,10 +109,13 @@ with sync_playwright() as pw:
     tr.fill("#request-handoff-form [name=code]", code)
     tr.click("#request-handoff-form .btn")
     until(tr, "(id) => getIncoming(id).status === 'delivered'", arg=pid)
-    assert tr.evaluate("earningsSummary().available") == 46.5
+    assert tr.evaluate("earningsSummary().available") == 45
     go(tr, "earnings")
     tr.screenshot(path=str(OUT / "traveler-earnings.png"))
-    step("Wrong code refused; right code delivered; traveller earned 46.50 MAD")
+    step("Wrong code refused; right code delivered; traveller earned 45 MAD (50 minus 10%)")
+    go(tr, "space-traveler")
+    tr.wait_for_timeout(300)
+    tr.locator(".account-panel").screenshot(path=str(OUT / "traveler-account.png"))
 
     s.evaluate("GJ.refresh().then(render)")
     until(s, "(id) => getParcel(id).status === 'delivered'", arg=pid)

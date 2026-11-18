@@ -68,6 +68,9 @@ with sync_playwright() as pw:
 
     # Traveller publishes Tanger → Agadir with the price hint
     login(traveler, "traveler.test@example.com")
+    # Traveller tops up by bank card so the monthly subscription can be taken when publishing
+    traveler.evaluate("window.GJ.api('/api/wallet/card-topup', { method: 'POST', body: { amount: 300 } })")
+    until(traveler, "() => { window.GJ.refresh(); return state.balance >= 300 }")
     traveler.evaluate("search.mode='travel'; search.from='Tanger'; search.to='Agadir'")
     go(traveler, "publish")
     hint = traveler.locator("#price-hint").inner_text()
@@ -75,7 +78,8 @@ with sync_playwright() as pw:
     traveler.click('[data-action="use-price"]')
     traveler.click("#publish-form button.btn.wide")
     until(traveler, "() => location.hash.startsWith('#trips')")
-    step("Traveller published Tanger → Agadir using the suggested price")
+    assert traveler.evaluate("state.balance") == 200 and traveler.evaluate("window.GJ.S.plan.subscriptionPaid")
+    step("Traveller published Tanger → Agadir using the suggested price; 100 MAD subscription taken (300 → 200)")
 
     # Sender is notified and finds the trip "on the way", with trust facts from the server
     until(sender, "() => { window.GJ.refresh(); return state.notifications.some(n => n.key === 'routeAlert') }", timeout=20)
@@ -115,6 +119,51 @@ with sync_playwright() as pw:
     pickup = sender.evaluate("state.bookings[0].pickup")
     assert pickup.startswith("Rabat"), pickup
     step("Booked on the way: pickup recorded in " + pickup)
+
+    # Traveller accepts, then cancels: 2% fee, sender refunded in full, claim → admin refunds the fee
+    pid = sender.evaluate("state.bookings[0].id")
+    sender_balance = sender.evaluate("state.balance")
+    paid = sender.evaluate("state.bookings[0].price")
+    traveler.evaluate("window.GJ.refresh()")
+    go(traveler, "requests")
+    until(traveler, f"() => !!document.querySelector(\"[data-action=accept-request][data-value='{pid}']\")")
+    traveler.click(f"[data-action=accept-request][data-value='{pid}']")
+    until(traveler, f"() => getIncoming('{pid}').status === 'accepted'")
+    go(traveler, "request/" + pid)
+    traveler.click(f"[data-action=cancel-accepted][data-value='{pid}']")
+    traveler.click(f"#modal [data-action=confirm-cancel-accepted]")
+    until(traveler, f"() => getIncoming('{pid}').status === 'declined'")
+    fee = round(paid * 0.02, 2)
+    until(traveler, f"() => Math.abs(state.balance - {200 - fee}) < 0.01")
+    until(sender, f"() => {{ window.GJ.refresh(); return Math.abs(state.balance - {sender_balance + paid}) < 0.01 }}")
+    step(f"Traveller cancelled: fee {fee} MAD taken (2%), sender refunded {paid} MAD in full")
+    go(traveler, "space-traveler")
+    assert "1 / 30" in traveler.locator(".account-panel").inner_text()
+    traveler.click(".cancel-list summary")
+    traveler.click("[data-action=claim-fee]")
+    traveler.fill("#claim-form textarea", "Le client a demandé d'annuler par téléphone.")
+    traveler.click("#claim-form button")
+    until(traveler, "() => !!document.querySelector('.cancel-list .status-pending')")
+    step("Claim filed: 'en cours de traitement'")
+    admin = browser.new_context().new_page()
+    admin.goto(URL + "/admin/")
+    admin.wait_for_selector("#login")
+    admin.fill("#login [name=email]", "admin@gotrajet.test")
+    admin.fill("#login [name=password]", "admin-gotrajet")
+    admin.click("#login button")
+    admin.wait_for_selector("#tabs [data-tab=claims]")
+    admin.click("#tabs [data-tab=claims]")
+    admin.wait_for_selector("[data-act=claim-refund]")
+    admin.on("dialog", lambda d: d.accept("Annulation demandée par le client."))
+    admin.click("[data-act=claim-refund]")
+    admin.wait_for_timeout(800)
+    until(traveler, f"() => {{ window.GJ.refresh(); return Math.abs(state.balance - 200) < 0.01 }}")
+    go(traveler, "space-traveler")
+    traveler.click(".cancel-list summary")
+    assert traveler.locator(".cancel-list .status-delivered").count() == 1
+    traveler.wait_for_timeout(300)
+    traveler.locator(".account-panel").screenshot(path=str(OUT / "traveler-account-claim.png"))
+    step("Admin refunded the fee from the Réclamations tab; traveller back to 200 MAD")
 
     # Remove the alert
     go(sender, "results")

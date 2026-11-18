@@ -1,5 +1,19 @@
 # GOTRAJET — Changes
 
+## 18 November 2026 — Traveller pricing and account
+
+| Rule | Detail |
+| --- | --- |
+| Commission | 10 % of the transport price on each delivered parcel (was 7 %). |
+| Monthly subscription | 100 MAD, taken from the traveller's balance the first time they publish a trip or accept a parcel in the month, or with "Pay now". Balance too low → they can't publish or accept until they top up. Existing trips continue. |
+| Cancellation fee | 2 % of the transport price, only when the **traveller** cancels a parcel they had accepted. Free when the client cancels, and free to decline a new request. The client is always refunded in full. |
+| Monthly limit | At most 30 traveller cancellations per month; the 31st is refused. |
+| Claims | After a cancellation the traveller can file a claim ("en cours de traitement"). The team refunds the fee or rejects it in the admin **Réclamations** tab; the traveller sees the answer. |
+
+**Traveller home (`#space-traveler`):** an account panel showing the balance, "Top up my account" (bank card or Cash Plus), the month's subscription status, the 10 % commission, cancellations "n / 30", and the cancellation list with claim status.
+**API:** `GET /api/me/plan`, `POST /api/me/subscription/pay`, `GET /api/me/cancellations`, `POST /api/me/cancellations/{id}/claim`, `GET /api/admin/cancel-claims`, `POST /api/admin/cancel-claims/{id}/refund|reject`; `POST /api/parcels/{id}/decline` returns `cancelFee`. New table `traveler_cancellations` (created automatically).
+**Tests:** `backend/tests/test_pricing.py`; traveller-account checks in `tests/smart_checks.py`; `tests/server_e2e.py` and `tests/server_smart_e2e.py` cover top-up, subscription, cancellation, claim and admin refund on the real backend.
+
 ## 18 November 2026 — Smart features (competitive gaps)
 
 Built after reviewing competitor platforms ([competitors.md](competitors.md)). Each feature works in the demo and with the real backend. Nothing is simulated.

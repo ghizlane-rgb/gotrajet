@@ -347,9 +347,146 @@ body.dark .chip-along {
   font-weight: 700;
 }
 
+/* ---------- Traveller account panel ---------- */
+.account-panel {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(0, 2fr);
+  gap: 18px 24px;
+  align-items: stretch;
+  margin-bottom: 20px;
+}
+.account-balance {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--navy-deep, #062e50), var(--blue));
+  color: #fff;
+}
+body.dark .account-balance {
+  background: linear-gradient(135deg, #0d3a5f, #15558c);
+}
+.account-balance > small {
+  opacity: 0.85;
+  font-weight: 700;
+}
+.account-balance > strong {
+  font-size: clamp(1.8rem, 3vw, 2.3rem);
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.account-balance .detail-actions {
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.account-balance .btn.outline {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.55);
+  background: transparent;
+}
+.account-ways {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 8px;
+  opacity: 0.85;
+}
+.account-ways .ico {
+  width: 15px;
+  height: 15px;
+}
+.account-facts {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.account-fact {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-alt, var(--bg));
+  border: 1px solid var(--line);
+}
+.account-fact > div {
+  flex: 1;
+  min-width: 0;
+}
+.account-fact b {
+  display: block;
+}
+.account-fact small {
+  display: block;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.account-fact .btn {
+  flex: none;
+  white-space: nowrap;
+}
+.account-fact-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+.account-fact.ok .account-fact-icon {
+  background: var(--green-soft);
+  color: var(--green-text);
+}
+.account-fact.due {
+  border-color: var(--orange);
+  background: var(--orange-soft);
+}
+.account-fact.due .account-fact-icon {
+  background: var(--orange);
+  color: #fff;
+}
+.cancel-list {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.cancel-list summary {
+  cursor: pointer;
+  font-weight: 800;
+  padding: 4px 0;
+}
+.cancel-row-end {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.btn.danger-outline {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
 @media (max-width: 900px) {
   .tools-grid {
     grid-template-columns: 1fr;
+  }
+  .account-panel {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 560px) {
+  .account-fact {
+    flex-wrap: wrap;
+  }
+  .account-fact .btn {
+    width: 100%;
+    justify-content: center;
   }
 }
 @media (max-width: 560px) {

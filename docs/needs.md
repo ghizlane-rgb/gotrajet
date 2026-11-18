@@ -37,7 +37,7 @@ Priority:
 | P0 | A payment provider available in Morocco (for example through CMI, the Moroccan interbank centre, or a licensed payment provider) | Card payments are simulated. |
 | P0 | Escrow logic: the sender pays → money is held → released to the traveller after the handoff code is confirmed | Protects both sides. |
 | P1 | Traveller payouts (bank transfer / mobile wallet) and refunds on cancellation | Today the wallet is fictional. |
-| P1 | Invoices / receipts and accounting for the 7% service fee | Legal and tax obligations. |
+| P1 | Invoices / receipts and accounting for the 10% service fee, the 100 MAD monthly traveller subscription and the 2% cancellation fees | Legal and tax obligations. |
 | P1 | Insurance partner for the "optional insurance" | The option is displayed but covers nothing yet. |
 
 ## 4. Maps, tracking and messaging

@@ -53,7 +53,7 @@ Send them this (replace the address and admin password):
 > | Login | Password | Use |
 > | --- | --- | --- |
 > | sender.test@example.com | test1234 | Sender, 500 MAD test balance |
-> | traveler.test@example.com | test1234 | Verified traveller with trips |
+> | traveler.test@example.com | test1234 | Verified traveller with trips. Starts at 0 MAD: top up (test card, instant) before accepting a parcel, because the 100 MAD monthly subscription is taken from the balance |
 > | youssef@example.com | test1234 | Verified traveller |
 > | salma@example.com | test1234 | Verified traveller |
 > | Admin panel: /admin/ · admin@gotrajet.test | (admin password) | Team back office |

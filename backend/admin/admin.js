@@ -5,7 +5,7 @@ const mad = (n) => `${Number(n || 0).toLocaleString("fr-MA", { maximumFractionDi
 const when = (iso) => (iso ? new Date(iso).toLocaleString("fr-MA", { dateStyle: "short", timeStyle: "short" }) : "—");
 const badge = (s) => `<span class="badge ${esc(s)}">${esc(LABELS[s] || s)}</span>`;
 const LABELS = {
-  pending: "En attente", approved: "Approuvé", rejected: "Refusé", requested: "Demandé", paid: "Payé",
+  pending: "En attente", approved: "Approuvé", rejected: "Refusé", requested: "Demandé", paid: "Payé", refunded: "Remboursé",
   open: "Ouvert", resolved: "Résolu", closed: "Fermé", active: "Actif", suspended: "Suspendu",
   awaiting: "En attente", accepted: "Accepté", picked_up: "En route", delivered: "Livré", declined: "Refusé",
   cancelled: "Annulé", expired: "Expiré", held: "Bloqué (séquestre)", frozen: "Gelé (litige)",
@@ -145,6 +145,12 @@ const VIEWS = {
       table(["Voyageur", "Montant", "Mode", "Coordonnées", "Statut", "Actions"], payouts.map((p) =>
         `<tr><td><b>${esc(p.userName)}</b><small>${esc(p.phone)}</small><small>${when(p.createdAt)}</small></td><td><b>${mad(p.amount)}</b></td><td>${badge(p.method)}</td><td>${esc(p.details) || "—"}</td><td>${badge(p.status)}</td><td class="actions">${p.status === "requested" ? act("Marquer payé", "payout-paid", p.id, "ok") + act("Refuser", "payout-reject", p.id, "danger") : ""}</td></tr>`), "Aucune demande de retrait.");
   },
+  async claims() {
+    const { claims } = await api("/api/admin/cancel-claims");
+    return `<h2>Réclamations sur frais d’annulation</h2><p class="muted">Un voyageur qui annule un colis accepté paie des frais (2 % par défaut, 30 annulations max. par mois). S’il conteste, lisez le motif : « Rembourser » lui rend les frais, « Refuser » les maintient. Le voyageur voit votre réponse.</p>` +
+      table(["Voyageur", "Colis", "Frais", "Motif", "Statut", "Actions"], claims.map((c) =>
+        `<tr><td><b>${esc(c.traveler)}</b><small>${esc(c.phone)}</small><small>${esc(c.cancelsThisMonth)} annulation(s) ce mois</small></td><td><b>#${esc(c.parcelId)}</b><small>${esc(c.route)}</small><small>${when(c.createdAt)}</small></td><td><b>${mad(c.fee)}</b></td><td>${esc(c.claimReason)}</td><td>${badge(c.claimStatus)}${c.claimAnswer ? `<small>${esc(c.claimAnswer)}</small>` : ""}</td><td class="actions">${c.claimStatus === "pending" ? act("Rembourser", "claim-refund", c.id, "ok") + act("Refuser", "claim-reject", c.id, "danger") : ""}</td></tr>`), "Aucune réclamation.");
+  },
   async parcels() {
     const f = VIEWS.parcelFilter || "all";
     const { parcels } = await api("/api/admin/parcels?status=" + f);
@@ -200,6 +206,8 @@ const ACTIONS = {
   "dispute-refund": (b) => withNote("Note interne :", (note) => post(`/api/admin/disputes/${b.dataset.id}/resolve`, { resolution: "refund_sender", note }, "Expéditeur remboursé")),
   "dispute-release": (b) => withNote("Note interne :", (note) => post(`/api/admin/disputes/${b.dataset.id}/resolve`, { resolution: "release_traveler", note }, "Voyageur payé")),
   "payout-paid": (b) => withNote("Référence du virement / reçu agence :", (note) => post(`/api/admin/payouts/${b.dataset.id}/paid`, { note }, "Retrait marqué payé")),
+  "claim-refund": (b) => withNote("Réponse au voyageur :", (note) => post(`/api/admin/cancel-claims/${b.dataset.id}/refund`, { note }, "Frais remboursés au voyageur")),
+  "claim-reject": (b) => withNote("Motif du refus (visible par le voyageur) :", (note) => post(`/api/admin/cancel-claims/${b.dataset.id}/reject`, { note }, "Réclamation refusée")),
   "payout-reject": (b) => withNote("Motif du refus :", (note) => post(`/api/admin/payouts/${b.dataset.id}/reject`, { note }, "Retrait refusé, solde recrédité")),
   "user-suspend": (b) => withNote("Motif de la suspension :", (note) => post(`/api/admin/users/${b.dataset.id}/suspend`, { note }, "Compte suspendu")),
   "user-activate": (b) => post(`/api/admin/users/${b.dataset.id}/activate`, {}, "Compte réactivé"),

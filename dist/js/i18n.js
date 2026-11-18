@@ -590,9 +590,9 @@ function phrase(key, fr, en, ar) {
   ],
   [
     "earningsNote",
-    "Simulation après 7 % de commission, selon les colis acceptés.",
-    "Simulation after a 7% fee, depending on accepted parcels.",
-    "محاكاة بعد عمولة 7٪ وفق عدد الطرود المقبولة.",
+    "Simulation après 10 % de commission, selon les colis acceptés.",
+    "Simulation after a 10% fee, depending on accepted parcels.",
+    "محاكاة بعد عمولة 10٪ وفق عدد الطرود المقبولة.",
   ],
   [
     "tripSaved",
@@ -1274,7 +1274,7 @@ phrase(
   ["routeLabel", "Trajet", "Route", "المسار"],
   ["statusLabel", "Statut", "Status", "الحالة"],
   ["gross", "Montant brut", "Gross amount", "المبلغ الإجمالي"],
-  ["commission", "Commission GOTRAJET (7 %)", "GOTRAJET fee (7%)", "عمولة GOTRAJET (7٪)"],
+  ["commission", "Commission GOTRAJET (10 %)", "GOTRAJET fee (10%)", "عمولة GOTRAJET (10٪)"],
   ["net", "Net pour vous", "Net for you", "الصافي لك"],
   ["noRequests", "Aucune demande pour le moment.", "No requests yet.", "لا توجد طلبات حالياً."],
   [

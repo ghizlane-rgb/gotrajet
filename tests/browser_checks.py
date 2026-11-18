@@ -191,11 +191,11 @@ with sync_playwright() as pw:
     assert page.evaluate("getIncoming('RQ-A3').status") == 'declined'
     go('earnings')
     available = page.evaluate('earningsSummary().available')
-    assert available == 186, available  # 65.1 + 65.1 + 55.8, each net of the 7% fee
+    assert available == 180, available  # 63 + 63 + 54, each net of the 10% fee
     balance = page.evaluate('state.balance')
     page.locator('[data-action=withdraw]').click()
     assert page.evaluate('earningsSummary().available') == 0
-    assert round(page.evaluate('state.balance') - balance, 2) == 186
+    assert round(page.evaluate('state.balance') - balance, 2) == 180
     go('parcel/GJ2048')
     assert page.evaluate('state.space') == 'sender'  # opening a sender page switches back
     for label in ['parcelInfo', 'travelerTrip', 'addressesRecipient', 'priceDetail']:
@@ -331,9 +331,9 @@ with sync_playwright() as pw:
     assert not page.locator('#how-send').is_visible()
     page.locator('[data-calc=parcels]').fill('4')
     page.locator('[data-calc=price]').fill('100')
-    assert page.evaluate('calcTotal()') == 372
+    assert page.evaluate('calcTotal()') == 360  # 4 × 100 MAD minus the 10% fee
     # The total counts up smoothly; wait for the animation to land on the exact value.
-    page.wait_for_function("document.querySelector('#calc-total').textContent === money(372)", timeout=3000)
+    page.wait_for_function("document.querySelector('#calc-total').textContent === money(360)", timeout=3000)
     page.set_viewport_size({'width': 390, 'height': 844})
     page.locator('.site-burger').click()
     page.locator('#site-nav').wait_for(state='visible', timeout=2000)

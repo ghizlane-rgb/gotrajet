@@ -8,12 +8,13 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..db import get_db
 from ..models import (
-    AuditLog, CashTopup, Dispute, LedgerEntry, Parcel, Payout, SupportTicket, Trip, TwoFactor, User, VerificationDoc, now,
+    AuditLog, CashTopup, Dispute, LedgerEntry, Parcel, Payout, SupportTicket, TravelerCancellation, Trip, TwoFactor,
+    User, VerificationDoc, now,
 )
 from ..security import admin_base, admin_user, totp_new_secret, totp_verify
 from ..services import (
-    cash_out, iso, is_verified_traveler, ledger, mad, notify, parcel_for_sender, refund_escrow, release_escrow,
-    user_out, verification_state,
+    cancellation_out, cancels_this_month, cash_out, iso, is_verified_traveler, ledger, mad, notify, parcel_for_sender,
+    refund_escrow, release_escrow, user_out, verification_state,
 )
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -89,6 +90,7 @@ def stats(admin: User = Depends(admin_user), db: Session = Depends(get_db)):
         "requestedPayoutsAmount": mad(count(select(func.sum(Payout.amount_cents)).where(Payout.status == "requested"))),
         "pendingCash": count(select(func.count(CashTopup.id)).where(CashTopup.status == "pending")),
         "openTickets": count(select(func.count(SupportTicket.id)).where(SupportTicket.status == "open")),
+        "pendingClaims": count(select(func.count(TravelerCancellation.id)).where(TravelerCancellation.claim_status == "pending")),
         "sandbox": settings.sandbox,
     }
 
@@ -249,6 +251,47 @@ def payout_action(payout_id: str, action: str, data: NoteIn, admin: User = Depen
         raise HTTPException(404, "unknown_action")
     p.processed_at = now()
     audit(db, admin, "payout_" + action, p.id, data.note)
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/cancel-claims")
+def cancel_claims(admin: User = Depends(admin_user), db: Session = Depends(get_db)):
+    """Traveller cancellations that carry a fee claim, pending first."""
+    cs = db.scalars(select(TravelerCancellation).where(TravelerCancellation.claim_status != "none")
+                    .order_by(TravelerCancellation.claim_status.asc(), TravelerCancellation.created_at.desc()).limit(300)).all()
+    out = []
+    for c in cs:
+        t, p = db.get(User, c.traveler_id), db.get(Parcel, c.parcel_id)
+        out.append({**cancellation_out(c), "traveler": t.name if t else "", "phone": t.phone if t else "",
+                    "route": f"{p.trip.from_city} → {p.trip.to_city}" if p else "",
+                    "cancelsThisMonth": cancels_this_month(db, c.traveler_id), "createdAt": iso(c.created_at)})
+    return {"claims": out}
+
+
+class ClaimAnswerIn(BaseModel):
+    note: str = Field(default="", max_length=1000)
+
+
+@router.post("/cancel-claims/{cancel_id}/{action}")
+def cancel_claim_action(cancel_id: str, action: str, data: ClaimAnswerIn, admin: User = Depends(admin_user),
+                        db: Session = Depends(get_db)):
+    c = db.get(TravelerCancellation, cancel_id)
+    if not c or c.claim_status != "pending":
+        raise HTTPException(404, "claim_not_pending")
+    traveler = db.get(User, c.traveler_id)
+    if action == "refund":
+        ledger(db, c.traveler_id, "fee_refund", c.fee_cents, c.parcel_id, f"Frais d'annulation #{c.parcel_id} remboursés")
+        ledger(db, None, "commission", -c.fee_cents, c.parcel_id, f"Remboursement frais d'annulation #{c.parcel_id}")
+        c.claim_status = "refunded"
+        notify(db, traveler, "cancelFeeRefunded", f"{mad(c.fee_cents):g} MAD · #{c.parcel_id}", "earnings")
+    elif action == "reject":
+        c.claim_status = "rejected"
+        notify(db, traveler, "cancelClaimRejected", f"#{c.parcel_id}", "earnings")
+    else:
+        raise HTTPException(404, "unknown_action")
+    c.claim_answer, c.resolved_at = data.note.strip(), now()
+    audit(db, admin, "cancel_claim_" + action, c.id, data.note)
     db.commit()
     return {"ok": True}
 

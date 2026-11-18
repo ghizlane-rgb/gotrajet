@@ -10,11 +10,12 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..db import get_db
-from ..models import Dispute, Parcel, Review, RouteAlert, Trip, User, now
+from ..models import Dispute, Parcel, Review, RouteAlert, TravelerCancellation, Trip, User, now
 from ..security import current_user, limiter
 from ..services import (
-    ACTIVE, CITIES, balance_cents, cents, is_verified_traveler, ledger, normalize_phone, notify,
-    parcel_for_sender, parcel_for_traveler, refund_escrow, release_escrow, trip_load, trip_out, trip_serves,
+    ACTIVE, CITIES, balance_cents, cancellation_out, cancels_this_month, cents, ensure_subscription,
+    is_verified_traveler, ledger, mad, normalize_phone, notify, parcel_for_sender, parcel_for_traveler, plan_out,
+    refund_escrow, release_escrow, transport_cents, trip_load, trip_out, trip_serves,
 )
 
 router = APIRouter(prefix="/api", tags=["market"])
@@ -103,6 +104,7 @@ def publish_trip(data: TripIn, user: User = Depends(current_user), db: Session =
     if settings.require_verified_traveler and not is_verified_traveler(db, user):
         raise HTTPException(403, "traveler_not_verified")
     limiter.check("trip:" + user.id, 20, 86400)
+    ensure_subscription(db, user)  # monthly traveller fee, taken once per month from the balance
     t = Trip(
         traveler_id=user.id, from_city=data.from_, to_city=data.to, date=data.date, time=data.time,
         price_cents=cents(data.price), seats=data.seats, max_weight_kg=data.weight, vehicle=data.vehicle,
@@ -311,6 +313,7 @@ def accept(parcel_id: str, user: User = Depends(current_user), db: Session = Dep
         raise HTTPException(409, "not_awaiting")
     if p.trip.status != "upcoming":
         raise HTTPException(409, "trip_not_upcoming")
+    ensure_subscription(db, user)
     p.status, p.accepted_at = "accepted", now()
     notify(db, p.sender, "requestAccepted", f"{user.name} · {_route(p.trip)}", f"parcel/{p.id}", sms=True)
     db.commit()
@@ -319,14 +322,63 @@ def accept(parcel_id: str, user: User = Depends(current_user), db: Session = Dep
 
 @router.post("/parcels/{parcel_id}/decline")
 def decline(parcel_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Saying no to a new request is free. Cancelling a parcel the traveller had accepted costs them
+    a fee (2% of the transport price by default), at most 30 times a month; the sender is refunded in full."""
     p = _as_traveler(db, parcel_id, user)
     if p.status not in ("awaiting", "accepted"):
         raise HTTPException(409, "cannot_decline")
+    fee = 0
+    if p.status == "accepted":
+        if cancels_this_month(db, user.id) >= settings.max_cancels_per_month:
+            raise HTTPException(409, "cancel_limit_reached")
+        fee = int(round(transport_cents(p) * settings.cancel_fee_rate))
+        db.add(TravelerCancellation(parcel_id=p.id, traveler_id=user.id, fee_cents=fee))
+        if fee:
+            ledger(db, user.id, "cancel_fee", -fee, p.id, f"Annulation #{p.id}")
+            ledger(db, None, "commission", fee, p.id, f"Frais d'annulation #{p.id}")
     p.status = "declined"
     refund_escrow(db, p, f"{p.id} · refusé")
     notify(db, p.sender, "requestDeclined", f"{_route(p.trip)} · #{p.id}", f"parcel/{p.id}", sms=True)
     db.commit()
-    return {"request": parcel_for_traveler(db, p)}
+    return {"request": parcel_for_traveler(db, p), "cancelFee": mad(fee)}
+
+
+# ---------- Traveller plan, cancellations and fee claims ----------
+
+@router.get("/me/plan")
+def my_plan(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    return {"plan": plan_out(db, user)}
+
+
+@router.post("/me/subscription/pay")
+def pay_subscription(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Lets the traveller settle the month in advance (otherwise it is taken at the first publish/accept)."""
+    ensure_subscription(db, user)
+    db.commit()
+    return {"plan": plan_out(db, user)}
+
+
+@router.get("/me/cancellations")
+def my_cancellations(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    cs = db.scalars(select(TravelerCancellation).where(TravelerCancellation.traveler_id == user.id)
+                    .order_by(TravelerCancellation.created_at.desc()).limit(100)).all()
+    return {"cancellations": [cancellation_out(c) for c in cs]}
+
+
+class ClaimIn(BaseModel):
+    reason: str = Field(min_length=10, max_length=2000)
+
+
+@router.post("/me/cancellations/{cancel_id}/claim")
+def claim_cancel_fee(cancel_id: str, data: ClaimIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    c = db.get(TravelerCancellation, cancel_id)
+    if not c or c.traveler_id != user.id:
+        raise HTTPException(404, "cancellation_not_found")
+    if c.claim_status != "none" or c.fee_cents <= 0:
+        raise HTTPException(409, "claim_not_possible")
+    c.claim_status, c.claim_reason = "pending", data.reason.strip()
+    db.commit()
+    return {"cancellation": cancellation_out(c)}
 
 
 @router.post("/parcels/{parcel_id}/pickup")

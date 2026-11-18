@@ -118,6 +118,64 @@ def release_escrow(db: Session, p: Parcel, ref: str = "") -> None:
     p.escrow = "released"
 
 
+# ---------- Traveller subscription and cancellations ----------
+
+def month_key() -> str:
+    return now().date().isoformat()[:7]
+
+
+def month_start() -> datetime:
+    d = now()
+    return datetime(d.year, d.month, 1)
+
+
+def subscription_ref(month: str) -> str:
+    return f"Abonnement voyageur {month}"
+
+
+def subscription_paid(db: Session, user_id: str, month: str | None = None) -> bool:
+    ref = subscription_ref(month or month_key())
+    return bool(db.scalar(select(LedgerEntry.id).where(
+        LedgerEntry.user_id == user_id, LedgerEntry.kind == "subscription", LedgerEntry.ref == ref)))
+
+
+def ensure_subscription(db: Session, user: User) -> None:
+    """Takes the monthly traveller fee from the balance, once per month, the first time the traveller
+    publishes a trip or accepts a parcel that month. Too low a balance: 402, the traveller tops up first."""
+    fee, m = settings.monthly_fee_cents, month_key()
+    if fee <= 0 or subscription_paid(db, user.id, m):
+        return
+    if balance_cents(db, user.id) < fee:
+        raise HTTPException(402, "subscription_unpaid")
+    ledger(db, user.id, "subscription", -fee, None, subscription_ref(m))
+    ledger(db, None, "commission", fee, None, f"{subscription_ref(m)} · {user.id}")
+    notify(db, user, "subscriptionPaid", f"{mad(fee):g} MAD · {m}", "space-traveler")
+
+
+def cancels_this_month(db: Session, traveler_id: str) -> int:
+    from .models import TravelerCancellation
+    return int(db.scalar(select(func.count(TravelerCancellation.id)).where(
+        TravelerCancellation.traveler_id == traveler_id, TravelerCancellation.created_at >= month_start())) or 0)
+
+
+def plan_out(db: Session, user: User) -> dict:
+    """What the traveller pays, and where they stand this month (shown on the traveller dashboard)."""
+    return {
+        "month": month_key(),
+        "monthlyFee": mad(settings.monthly_fee_cents),
+        "subscriptionPaid": subscription_paid(db, user.id),
+        "commissionRate": settings.commission_rate,
+        "cancelFeeRate": settings.cancel_fee_rate,
+        "cancelsThisMonth": cancels_this_month(db, user.id),
+        "maxCancelsPerMonth": settings.max_cancels_per_month,
+    }
+
+
+def cancellation_out(c) -> dict:
+    return {"id": c.id, "parcelId": c.parcel_id, "fee": mad(c.fee_cents), "claimStatus": c.claim_status,
+            "claimReason": c.claim_reason, "claimAnswer": c.claim_answer, "date": c.created_at.date().isoformat()}
+
+
 def refund_escrow(db: Session, p: Parcel, ref: str = "") -> None:
     if p.escrow not in ("held", "frozen"):
         return
@@ -313,6 +371,7 @@ def parcel_for_traveler(db: Session, p: Parcel, ratings: dict | None = None) -> 
 LEDGER_KEY = {
     "topup": "topup", "payment": "reservation", "refund": "refund", "earning": "earning",
     "payout": "payout", "payout_reversal": "refund", "adjustment": "adjustment",
+    "subscription": "subscriptionFee", "cancel_fee": "cancelFee", "fee_refund": "cancelFeeRefund",
 }
 
 

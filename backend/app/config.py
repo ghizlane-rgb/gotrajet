@@ -55,7 +55,12 @@ class Settings:
         # Online (prod or Vercel) the admin password must be chosen, never the well-known dev default.
         public = self.is_prod or self.on_vercel
         self.admin_password = os.getenv("ADMIN_PASSWORD", "" if public else "admin-gotrajet")
-        self.commission_rate = float(os.getenv("COMMISSION_RATE", "0.07"))
+        # Traveller pricing: commission on each delivered parcel, monthly subscription,
+        # fee when the traveller cancels a parcel they accepted, and a monthly cap on those cancellations.
+        self.commission_rate = float(os.getenv("COMMISSION_RATE", "0.10"))
+        self.monthly_fee_cents = int(float(os.getenv("TRAVELER_MONTHLY_FEE_MAD", "100")) * 100)
+        self.cancel_fee_rate = float(os.getenv("TRAVELER_CANCEL_FEE_RATE", "0.02"))
+        self.max_cancels_per_month = int(os.getenv("TRAVELER_MAX_CANCELS_PER_MONTH", "30"))
         self.insurance_fee_cents = int(float(os.getenv("INSURANCE_FEE_MAD", "10")) * 100)
         self.cash_ttl_hours = int(os.getenv("CASH_TOPUP_TTL_HOURS", "48"))
         self.require_verified_traveler = _bool("REQUIRE_VERIFIED_TRAVELER", True)

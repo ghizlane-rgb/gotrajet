@@ -15,6 +15,9 @@ os.environ.update({
     "UPLOAD_DIR": str(Path(TMP, "up")),
     "SECRET_KEY": "test-secret", "ADMIN_EMAIL": "admin@test.ma", "ADMIN_PASSWORD": "admin-pass-123",
     "SEED_TEST_DATA": "false", "PAYMENT_MODE": "sandbox", "CASH_WEBHOOK_SECRET": "whsec", "SMS_PROVIDER": "console",
+    # These tests check the escrow mechanics with a fixed 7% and no subscription;
+    # the traveller pricing (10%, 100 MAD/month, 2% cancellation) is tested in test_pricing.py.
+    "COMMISSION_RATE": "0.07", "TRAVELER_MONTHLY_FEE_MAD": "0",
 })
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 

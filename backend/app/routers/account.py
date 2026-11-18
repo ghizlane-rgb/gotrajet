@@ -209,6 +209,8 @@ def bootstrap(user: User = Depends(current_user), db: Session = Depends(get_db))
         "parcels": market.my_parcels(user, db)["parcels"],
         "incoming": market.incoming(user, db)["requests"],
         "myTrips": market.my_trips(user, db)["trips"],
+        "plan": market.my_plan(user, db)["plan"],
+        "cancellations": market.my_cancellations(user, db)["cancellations"],
         "reviews": market.my_reviews(user, db),
         "conversations": conversations(user, db)["conversations"],
         "notifications": _notifications(db, user),

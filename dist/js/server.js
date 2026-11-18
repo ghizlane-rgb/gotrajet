@@ -135,7 +135,16 @@
     const changed = json !== S.lastJson;
     S.lastJson = json;
     applyBootstrap(b);
+    if (!S.alertsLoaded) await loadAlerts();
     return changed;
+  }
+  async function loadAlerts() {
+    try {
+      S.alerts = (await api("/api/me/alerts")).alerts;
+      S.alertsLoaded = true;
+    } catch {
+      S.alerts = S.alerts || [];
+    }
   }
   async function loadTrips(force = false) {
     if (!force && Date.now() - S.tripsAt < 30000) return false;
@@ -150,6 +159,8 @@
   function signedOut() {
     S.me = null;
     S.lastJson = "";
+    S.alerts = [];
+    S.alertsLoaded = false;
     state.session = null;
     state.bookings = [];
     state.incoming = [];
@@ -183,6 +194,30 @@
   };
   localNote = () =>
     SANDBOX ? `<div class="notice demo-notice">${icon("shield")}${t("sandboxNote")}</div>` : "";
+
+  /* ---------- Route alerts (stored on the account; the server notifies when a matching trip is published) ---------- */
+  routeAlerts = () => S.alerts || [];
+  actions["alert-add"] = async (el) => {
+    if (!S.me) {
+      sessionStorage.setItem("gj-after-login", location.hash);
+      toast(t("alertNeedsAccount"));
+      return go("login");
+    }
+    const [from, to] = el.dataset.value.split("|");
+    const res = await run(() => api("/api/me/alerts", { method: "POST", body: { from, to } }));
+    if (!res) return;
+    S.alerts = [...routeAlerts().filter((a) => a.id !== res.alert.id), res.alert];
+    toast(t("alertSaved"));
+    render();
+  };
+  actions["alert-remove"] = async (el) => {
+    const [from, to] = el.dataset.value.split("|");
+    const a = routeAlerts().find((x) => x.from === from && x.to === to);
+    if (!a || !(await run(() => api(`/api/me/alerts/${encodeURIComponent(a.id)}`, { method: "DELETE" })))) return;
+    S.alerts = routeAlerts().filter((x) => x.id !== a.id);
+    toast(t("alertRemoved"));
+    render();
+  };
 
   /* ---------- Sign-in guard ---------- */
   const baseRender = render;
@@ -338,11 +373,19 @@
     };
     if (!["wallet", "card"].includes(d.payment)) toast(t("paymentLimited"));
     const fromDraft = draft.tripId === p.id;
-    modal(`<h2>${t("recipient")}</h2><form id="booking-details-form"><div class="form-grid">${field(t("recipient"), "recipient", fromDraft ? draft.recipient : "", "text", 'required minlength="2" maxlength="80"')}${field(t("phone"), "recipientPhone", fromDraft ? draft.phone : "", "tel", 'required maxlength="30"')}${field(t("pickup"), "pickup", fromDraft ? draft.pickup : "", "text", 'maxlength="200"')}${field(t("dropoff"), "dropoff", fromDraft ? draft.dropoff : "", "text", 'maxlength="200"')}${field(t("content"), "content", fromDraft ? draft.content : t(search.size), "text", 'required maxlength="200"')}</div><label class="check-label"><input type="checkbox" name="acceptRules" required>${t("rulesConfirm")}</label><p class="map-note">${t("prohibitedList")}</p><button class="btn wide">${t("confirm")} · ${money(Number(p.price) * S.booking.quantity + (S.booking.insurance ? 10 * S.booking.quantity : 0))}</button></form>`);
+    // On a longer trip ("along the way"), the handoff cities are the sender's, not the trip's ends.
+    const seg = fromDraft ? { from: draft.from, to: draft.to } : { from: search.from, to: search.to };
+    const along = tripServes(p.from, p.to, seg.from, seg.to) === "along";
+    const content = fromDraft ? draft.content : t(search.size);
+    modal(`<h2>${t("recipient")}</h2>${along ? `<div class="notice along-notice">${matchChip(p, seg.from, seg.to)}<span>${t("alongTip")}</span></div>` : ""}<form id="booking-details-form"><div class="form-grid">${field(t("recipient"), "recipient", fromDraft ? draft.recipient : "", "text", 'required minlength="2" maxlength="80"')}${field(t("phone"), "recipientPhone", fromDraft ? draft.phone : "", "tel", 'required maxlength="30"')}${field(t("pickup"), "pickup", fromDraft ? draft.pickup : along ? seg.from + " · " : "", "text", 'maxlength="200"')}${field(t("dropoff"), "dropoff", fromDraft ? draft.dropoff : along ? seg.to + " · " : "", "text", 'maxlength="200"')}${field(t("content"), "content", content, "text", 'required maxlength="200" data-risk="booking-risk" aria-describedby="booking-risk"')}</div><div id="booking-risk" aria-live="polite">${riskBox(content)}</div><label class="check-label"><input type="checkbox" name="acceptRules" required>${t("rulesConfirm")}</label><p class="map-note">${t("prohibitedList")}</p><button class="btn wide">${t("confirm")} · ${money(Number(p.price) * S.booking.quantity + (S.booking.insurance ? 10 * S.booking.quantity : 0))}</button></form>`);
   };
   submits["checkout-form"] = (form) => confirmBooking(form);
   submits["booking-details-form"] = async (form) => {
     const d = Object.fromEntries(new FormData(form));
+    if (contentRisk(d.content).level === "block") {
+      form.elements.content.focus();
+      return toast(t("riskBlocked"));
+    }
     const fromDraft = draft.tripId === S.booking.tripId;
     const body = {
       ...S.booking,

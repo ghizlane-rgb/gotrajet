@@ -10,11 +10,11 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..db import get_db
-from ..models import Dispute, Parcel, Review, Trip, User, now
+from ..models import Dispute, Parcel, Review, RouteAlert, Trip, User, now
 from ..security import current_user, limiter
 from ..services import (
     ACTIVE, CITIES, balance_cents, cents, is_verified_traveler, ledger, normalize_phone, notify,
-    parcel_for_sender, parcel_for_traveler, refund_escrow, release_escrow, trip_load, trip_out,
+    parcel_for_sender, parcel_for_traveler, refund_escrow, release_escrow, trip_load, trip_out, trip_serves,
 )
 
 router = APIRouter(prefix="/api", tags=["market"])
@@ -66,14 +66,27 @@ def search_trips(
     db: Session = Depends(get_db),
 ):
     q = select(Trip).where(Trip.status == "upcoming", Trip.date >= morocco_today())
-    if from_:
+    both = bool(from_ and to)
+    # With both cities, longer trips that pass through them are matched too ("along the way"),
+    # so the city filter is applied in Python on the road network instead of in SQL.
+    if from_ and not both:
         q = q.where(Trip.from_city == from_)
-    if to:
+    if to and not both:
         q = q.where(Trip.to_city == to)
     if date:
         q = q.where(Trip.date == date)
-    trips = db.scalars(q.order_by(Trip.date, Trip.time).limit(200)).all()
-    return {"trips": [o for o in (trip_out(db, t) for t in trips) if o["freeSeats"] > 0]}
+    trips = db.scalars(q.order_by(Trip.date, Trip.time).limit(500)).all()
+    out = []
+    for t in trips:
+        match = trip_serves(t.from_city, t.to_city, from_, to) if both else "direct"
+        if not match:
+            continue
+        o = trip_out(db, t)
+        if o["freeSeats"] > 0:
+            out.append({**o, "match": match})
+        if len(out) >= 200:
+            break
+    return {"trips": out}
 
 
 @router.get("/trips/{trip_id}")
@@ -97,8 +110,60 @@ def publish_trip(data: TripIn, user: User = Depends(current_user), db: Session =
         notes=data.notes.strip(),
     )
     db.add(t)
+    db.flush()
+    # Senders waiting for this route (or a section of it) are told right away.
+    for a in db.scalars(select(RouteAlert).where(RouteAlert.user_id != user.id)):
+        if trip_serves(t.from_city, t.to_city, a.from_city, a.to_city):
+            notify(db, db.get(User, a.user_id), "routeAlert",
+                   f"{a.from_city} → {a.to_city} · {t.date} {t.time} · {user.name}", f"detail/{t.id}")
     db.commit()
     return {"trip": trip_out(db, t)}
+
+
+# ---------- Route alerts ----------
+
+MAX_ALERTS = 10
+
+
+class AlertIn(BaseModel):
+    from_: str = Field(alias="from")
+    to: str
+
+
+def _alert_out(a: RouteAlert) -> dict:
+    return {"id": a.id, "from": a.from_city, "to": a.to_city}
+
+
+@router.get("/me/alerts")
+def my_alerts(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    alerts = db.scalars(select(RouteAlert).where(RouteAlert.user_id == user.id).order_by(RouteAlert.created_at)).all()
+    return {"alerts": [_alert_out(a) for a in alerts]}
+
+
+@router.post("/me/alerts")
+def add_alert(data: AlertIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    if data.from_ not in CITIES or data.to not in CITIES or data.from_ == data.to:
+        raise HTTPException(422, "invalid_cities")
+    existing = db.scalar(select(RouteAlert).where(
+        RouteAlert.user_id == user.id, RouteAlert.from_city == data.from_, RouteAlert.to_city == data.to))
+    if existing:
+        return {"alert": _alert_out(existing)}
+    if len(db.scalars(select(RouteAlert.id).where(RouteAlert.user_id == user.id)).all()) >= MAX_ALERTS:
+        raise HTTPException(409, "too_many_alerts")
+    a = RouteAlert(user_id=user.id, from_city=data.from_, to_city=data.to)
+    db.add(a)
+    db.commit()
+    return {"alert": _alert_out(a)}
+
+
+@router.delete("/me/alerts/{alert_id}")
+def delete_alert(alert_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    a = db.get(RouteAlert, alert_id)
+    if not a or a.user_id != user.id:
+        raise HTTPException(404, "alert_not_found")
+    db.delete(a)
+    db.commit()
+    return {"ok": True}
 
 
 @router.get("/me/trips")

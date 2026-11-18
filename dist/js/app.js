@@ -56,6 +56,7 @@ const paths = {
   eye: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12Zm14 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z",
   pause: "M9 5v14M15 5v14",
   play: "M7 4.5v15l12.5-7.5Z",
+  alert: "M12 3 2 20h20ZM12 10v4M12 17h.01",
 };
 function icon(name, cls = "") {
   return `<svg class="ico ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.box}"/></svg>`;
@@ -744,6 +745,7 @@ function languageSelect(cls = "") {
 function siteHeader() {
   const links = [
     ["how", "navHow"],
+    ["tools", "navTools"],
     ["routes", "navRoutes"],
     ["coverage", "navMap"],
     ["travel", "navTravel"],
@@ -840,6 +842,20 @@ function landingHow() {
         `<button type="button" role="tab" aria-selected="${landingRole === r}" aria-controls="how-${r}" class="${landingRole === r ? "active" : ""}" data-action="landing-role" data-value="${r}">${icon(i)}${t(k)}</button>`,
     )
     .join("")}</div>${panelHtml("send")}${panelHtml("travel")}</div></section>`;
+}
+/* "Before you send": prohibited-items check and price guide, open to visitors without an account. */
+let toolsRoute = { from: "Casablanca", to: "Marrakech" };
+function toolsPrice() {
+  const { from, to } = toolsRoute;
+  if (from === to) return `<p class="muted">${t("sameCity")}</p>`;
+  const a = priceAdvice(from, to, allTrips());
+  if (!a) return "";
+  const avail = allTrips().filter((p) => tripServes(p.from, p.to, from, to) && freeSeats(p) > 0);
+  const along = avail.filter((p) => tripServes(p.from, p.to, from, to) === "along").length;
+  return `<dl class="tool-facts"><div><dt>${t("routeFacts")}</dt><dd>${routeFacts(from, to)}</dd></div><div><dt>${t("fairRange")}</dt><dd>${moneyRange(a.low, a.high)}</dd></div><div><dt>${t("marketMedian")}</dt><dd>${a.count ? `${ltr(money(a.median))} <small>(${a.count})</small>` : `<small>${t("noMarketYet")}</small>`}</dd></div></dl><div class="tool-foot"><span>${fill("tripsAvailable", { n: avail.length })}${along ? ` · ${fill("alongCount", { n: along })}` : ""}</span><button type="button" class="btn" data-action="tools-search">${t("seeTrips")}${icon("arrow", "flip")}</button></div><p class="map-note">${t("priceGuideNote")}</p>`;
+}
+function landingTools() {
+  return `<section class="site-section alt" id="tools"><div class="site-container">${sectionTitle(t("toolsEyebrow"), t("toolsTitle"), t("toolsSub"))}<div class="tools-grid"><article class="tool-card reveal"><span class="why-icon">${icon("shield")}</span><h3>${t("canISend")}</h3><p>${t("canISendSub")}</p><label class="sr-only" for="tool-content">${t("content")}</label><textarea id="tool-content" rows="3" maxlength="300" placeholder="${esc(t("canISendPh"))}" data-risk="tool-risk" aria-describedby="tool-risk"></textarea><div id="tool-risk" aria-live="polite"></div><p class="map-note">${t("prohibitedList")}</p></article><article class="tool-card reveal"><span class="why-icon">${icon("wallet")}</span><h3>${t("howMuch")}</h3><p>${t("howMuchSub")}</p><div class="tool-route"><label>${t("from")}<select name="from" data-tool>${options(CITIES, toolsRoute.from)}</select></label><button type="button" class="swap" data-action="tools-swap" aria-label="${t("swap")}">⇄</button><label>${t("to")}<select name="to" data-tool>${options(CITIES, toolsRoute.to)}</select></label></div><div id="tools-price" aria-live="polite">${toolsPrice()}</div></article></div></div></section>`;
 }
 function landingRoutes() {
   return `<section class="site-section alt" id="routes"><div class="site-container">${sectionTitle(
@@ -953,7 +969,7 @@ function siteFooter() {
   ])}</div><div class="site-foot-bottom"><span>© ${new Date().getFullYear()} GOTRAJET · ${t("madeIn")}</span><span class="site-foot-demo">${icon("shield")}${t("footDemo")}</span><button type="button" class="site-top-link" data-action="scroll-to" data-value="top">${t("backToTop")} ↑</button></div></div></footer>`;
 }
 function welcome() {
-  return `<div class="site"><div class="scroll-progress" aria-hidden="true"></div>${siteHeader()}<div class="site-main">${landingHero()}${landingHow()}${landingRoutes()}${landingCoverage()}${landingWhy()}${landingTravel()}${landingSafety()}${landingReviews()}${landingFaq()}${landingCta()}</div>${siteFooter()}</div>`;
+  return `<div class="site"><div class="scroll-progress" aria-hidden="true"></div>${siteHeader()}<div class="site-main">${landingHero()}${landingHow()}${landingTools()}${landingRoutes()}${landingCoverage()}${landingWhy()}${landingTravel()}${landingSafety()}${landingReviews()}${landingFaq()}${landingCta()}</div>${siteFooter()}</div>`;
 }
 function onboarding() {
   const k = onboardingIndex + 1;
@@ -970,7 +986,7 @@ function searchForm(compact = false) {
   return `<form id="search-form" class="search-card ${compact ? "compact-search" : ""}"><div class="tabs"><button type="button" class="tab ${search.mode === "send" ? "active" : ""}" data-action="search-mode" data-value="send">${icon("box")}${t("send")}</button><button type="button" class="tab ${search.mode === "travel" ? "active" : ""}" data-action="search-mode" data-value="travel">${icon("car")}${t("travel")}</button></div><div class="search-grid enhanced-search"><div class="field">${icon("pin")}<label>${t("from")}<select name="from" aria-label="${t("from")}">${options(CITIES, search.from)}</select></label></div><button type="button" class="swap" data-action="swap" aria-label="${t("swap")}">⇄</button><div class="field destination">${icon("pin")}<label>${t("to")}<select name="to" aria-label="${t("to")}">${options(CITIES, search.to)}</select></label></div><div class="field">${icon("box")}<label>${t("type")}<select name="size" aria-label="${t("type")}">${["documents", "small", "medium", "large"].map((k) => `<option value="${k}" ${k === search.size ? "selected" : ""}>${t(k)}</option>`).join("")}</select></label></div><div class="field">${icon("calendar")}<label>${t("departureDate")}<input type="date" name="date" min="${today()}" value="${esc(search.date)}" aria-label="${t("departureDate")}"></label></div><button class="btn">${icon("search")}${t(search.mode === "travel" ? "propose" : "search")}</button></div></form>`;
 }
 function tripCard(trip) {
-  return `<article class="route-card"><a href="#detail/${esc(trip.id)}" class="route-photo"><img src="${photos[trip.photo || 0]}" alt="${esc(trip.to)}" loading="lazy"><span class="photo-badge">● ${t("available")}</span></a><button class="favorite-button ${state.favorites.includes(trip.id) ? "saved" : ""}" data-action="favorite" data-value="${esc(trip.id)}" aria-label="${t(state.favorites.includes(trip.id) ? "favoriteRemove" : "favoriteAdd")}">${icon("heart")}</button><div class="route-info"><a href="#detail/${esc(trip.id)}" class="route-title">${esc(trip.from)}<span>→</span>${esc(trip.to)}</a><div class="route-meta"><span>${icon("calendar")}${dateText(trip.date)}</span><span>${freeSeats(trip)} ${t("seats")}</span></div><div class="route-bottom"><div class="driver">${avatar(trip.name)}<div>${esc(trip.name)}<div>${stars(trip.rating)} <small>(${trip.reviews})</small></div></div></div><div class="price">${money(trip.price)}</div></div></div></article>`;
+  return `<article class="route-card"><a href="#detail/${esc(trip.id)}" class="route-photo"><img src="${photos[trip.photo || 0]}" alt="${esc(trip.to)}" loading="lazy"><span class="photo-badge">● ${t("available")}</span></a><button class="favorite-button ${state.favorites.includes(trip.id) ? "saved" : ""}" data-action="favorite" data-value="${esc(trip.id)}" aria-label="${t(state.favorites.includes(trip.id) ? "favoriteRemove" : "favoriteAdd")}">${icon("heart")}</button><div class="route-info"><a href="#detail/${esc(trip.id)}" class="route-title">${esc(trip.from)}<span>→</span>${esc(trip.to)}</a><div class="route-meta"><span>${icon("calendar")}${dateText(trip.date)}</span><span>${freeSeats(trip)} ${t("seats")}</span></div>${trustChips(trip)}<div class="route-bottom"><div class="driver">${avatar(trip.name)}<div>${esc(trip.name)}<div>${stars(trip.rating)} <small>(${trip.reviews})</small></div></div></div><div class="price">${money(trip.price)}</div></div></div></article>`;
 }
 function shipmentCard(p) {
   return `<article class="shipment"><div class="shipment-header"><span class="box-icon">${icon("box")}</span><div><h3>${t("parcel")} #${esc(p.id)}</h3><small>${esc(p.from)} → ${esc(p.to)}</small></div>${badge(p.status)}</div><div class="progress"><span style="width:${p.status === "delivered" ? 100 : p.status === "transit" ? 68 : p.status === "cancelled" ? 0 : 15}%"></span></div><div class="shipment-foot"><span>${dateText(p.date)}${p.time ? " · " + esc(p.time) : ""}</span><a class="text-link" href="#parcel/${esc(p.id)}">${t("details")} →</a></div></article>`;
@@ -1045,7 +1061,8 @@ function filteredTrips() {
   return allTrips()
     .filter(
       (p) =>
-        (filters.all || (p.from === search.from && p.to === search.to)) &&
+        // Exact route, or a longer trip that passes through both cities in order ("along the way")
+        (filters.all || !!tripServes(p.from, p.to, search.from, search.to)) &&
         (!search.date || p.date === search.date) &&
         p.weight >= sizeWeight[search.size] &&
         (!filters.maxPrice || p.price <= Number(filters.maxPrice)) &&
@@ -1053,13 +1070,15 @@ function filteredTrips() {
         freeSeats(p) >= Number(filters.minSeats),
     )
     .sort((a, b) =>
-      filters.sort === "price"
+      // Direct trips first, then those passing through on a longer route
+      (!filters.all && (tripServes(a.from, a.to, search.from, search.to) === "along") - (tripServes(b.from, b.to, search.from, search.to) === "along")) ||
+      (filters.sort === "price"
         ? a.price - b.price
         : filters.sort === "rating"
           ? b.rating - a.rating
           : filters.sort === "seats"
             ? freeSeats(b) - freeSeats(a)
-            : a.date.localeCompare(b.date) || a.time.localeCompare(b.time),
+            : a.date.localeCompare(b.date) || a.time.localeCompare(b.time)),
     );
 }
 function schematic(from = "Casablanca", to = "Rabat", progress = 68) {
@@ -1143,14 +1162,35 @@ function routeMap(from, to, progress = 68) {
 }
 
 function resultRow(p) {
-  return `<article class="result-row">${avatar(p.name)}<div class="details"><h3>${esc(p.name)} ${stars(p.rating)} <small>(${p.reviews})</small></h3><p>${esc(p.from)} → ${esc(p.to)}</p><p>${dateText(p.date)} · ${esc(p.time)} · ${freeSeats(p)} ${t("seats")}</p><span class="badge">${esc(p.vehicle)} · ${t("upTo")} ${p.weight} kg</span></div><button class="favorite-inline ${state.favorites.includes(p.id) ? "saved" : ""}" data-action="favorite" data-value="${esc(p.id)}" aria-label="${t("favorites")}">${icon("heart")}</button><div class="result-price"><div class="price">${money(p.price)}</div>${btn(t("viewTrip") + icon("arrow"), "detail/" + p.id)}</div></article>`;
+  const along = filters.all ? "" : matchChip(p, search.from, search.to);
+  return `<article class="result-row ${along ? "is-along" : ""}">${avatar(p.name)}<div class="details"><h3>${esc(p.name)} ${stars(p.rating)} <small>(${p.reviews})</small></h3><p>${esc(p.from)} → ${esc(p.to)} <small class="muted">· ${routeFacts(p.from, p.to)}</small></p><p>${dateText(p.date)} · ${esc(p.time)} · ${freeSeats(p)} ${t("seats")}</p><div class="chip-row">${along}<span class="badge">${esc(t(p.vehicle) || p.vehicle)} · ${t("upTo")} ${p.weight} kg</span></div>${trustChips(p)}</div><button class="favorite-inline ${state.favorites.includes(p.id) ? "saved" : ""}" data-action="favorite" data-value="${esc(p.id)}" aria-label="${t("favorites")}">${icon("heart")}</button><div class="result-price"><div class="price">${money(p.price)}</div>${btn(t("viewTrip") + icon("arrow"), "detail/" + p.id)}</div></article>`;
+}
+/* Route alerts: "tell me when someone travels Fès → Tanger". Kept on this device in the demo;
+   server.js swaps these for the account's alerts and the server sends the notification. */
+function routeAlerts() {
+  return state.alerts || [];
+}
+function alertButton(from, to) {
+  if (!from || !to || from === to) return "";
+  const on = routeAlerts().some((a) => a.from === from && a.to === to);
+  return `<button type="button" class="btn ${on ? "alert-on" : "outline"}" data-action="${on ? "alert-remove" : "alert-add"}" data-value="${esc(from)}|${esc(to)}" aria-pressed="${on}">${icon("bell")}${t(on ? "alertOn" : "alertMe")}</button>`;
+}
+function alertsStrip() {
+  const list = routeAlerts();
+  if (!list.length) return "";
+  return `<div class="alerts-strip"><b>${icon("bell")}${t("myAlerts")}</b>${list.map((a) => `<span class="chip">${esc(a.from)} → ${esc(a.to)}<button type="button" data-action="alert-remove" data-value="${esc(a.from)}|${esc(a.to)}" aria-label="${t("delete")} · ${esc(a.from)} → ${esc(a.to)}">×</button></span>`).join("")}</div>`;
 }
 function results() {
   const list = filteredTrips();
+  const along = filters.all ? 0 : list.filter((p) => tripServes(p.from, p.to, search.from, search.to) === "along").length;
+  const emptyState = filters.all
+    ? empty(`<p>${t("noTrips")}</p><button class="btn outline" data-action="clear-filters">${t("clearFilters")}</button>`)
+    : `<div class="empty-alert panel"><span class="empty-alert-icon">${icon("bell")}</span><h3>${t("noTripsYet")}</h3><p>${esc(search.from)} → ${esc(search.to)} · ${routeFacts(search.from, search.to)}</p><p class="muted">${t("noTripsAlertSub")}</p><div class="detail-actions">${alertButton(search.from, search.to)}<button class="btn outline" data-action="clear-filters">${t("clearFilters")}</button></div></div>`;
   return (
     head("results", t("resultsSub")) +
     searchForm(true) +
-    `<div class="results-bar"><span>${list.length} · ${filters.all ? t("allRoutes") : esc(search.from) + " → " + esc(search.to)}</span><div class="filter-actions"><label class="sr-only" for="sort">${t("sort")}</label><select id="sort"><option value="time" ${filters.sort === "time" ? "selected" : ""}>${t("time")}</option><option value="price" ${filters.sort === "price" ? "selected" : ""}>${t("price")}</option><option value="rating" ${filters.sort === "rating" ? "selected" : ""}>${t("rating")}</option><option value="seats" ${filters.sort === "seats" ? "selected" : ""}>${t("capacity")}</option></select><button class="btn outline" data-action="filters">${icon("filter")}${t("filters")}</button></div></div><div class="search-results-layout"><div class="result-list">${list.length ? list.map(resultRow).join("") : empty(`<p>${t("noTrips")}</p><button class="btn outline" data-action="clear-filters">${t("clearFilters")}</button>`)}</div><aside class="results-map">${routeMap(list[0]?.from || search.from, list[0]?.to || search.to)}${localNote()}</aside></div>`
+    alertsStrip() +
+    `<div class="results-bar"><span>${list.length} · ${filters.all ? t("allRoutes") : esc(search.from) + " → " + esc(search.to) + ` <small class="muted">· ${routeFacts(search.from, search.to)}</small>`}${along ? ` <small class="muted">· ${fill("alongCount", { n: along })}</small>` : ""}</span><div class="filter-actions">${filters.all || !list.length ? "" : alertButton(search.from, search.to)}<label class="sr-only" for="sort">${t("sort")}</label><select id="sort"><option value="time" ${filters.sort === "time" ? "selected" : ""}>${t("time")}</option><option value="price" ${filters.sort === "price" ? "selected" : ""}>${t("price")}</option><option value="rating" ${filters.sort === "rating" ? "selected" : ""}>${t("rating")}</option><option value="seats" ${filters.sort === "seats" ? "selected" : ""}>${t("capacity")}</option></select><button class="btn outline" data-action="filters">${icon("filter")}${t("filters")}</button></div></div><div class="search-results-layout"><div class="result-list">${list.length ? list.map(resultRow).join("") : emptyState}</div><aside class="results-map">${routeMap(list[0]?.from || search.from, list[0]?.to || search.to)}${localNote()}</aside></div>`
   );
 }
 function detail() {
@@ -1162,11 +1202,11 @@ function detail() {
       `${esc(p.from)} → ${esc(p.to)}`,
       `<button class="btn outline" data-action="favorite" data-value="${esc(p.id)}">${icon("heart")}${t(state.favorites.includes(p.id) ? "favoriteRemove" : "favoriteAdd")}</button>`,
     ) +
-    `<div class="trip-cover"><img src="${photos[p.photo || 0]}" alt="${esc(p.to)}"><span>${t("together")}</span></div><div class="detail-layout"><section class="panel"><div class="section-heading"><h2>${esc(p.from)} → ${esc(p.to)}</h2><strong class="price">${money(p.price)}</strong></div><p>${dateText(p.date)} · ${p.time}</p><div class="traveler-row">${avatar(p.name)}<div><h3>${esc(p.name)}</h3>${stars(p.rating)} · ${p.reviews} ${t("rating")}</div><button class="text-link" data-action="contact-traveler" data-value="${esc(p.name)}">${icon("chat")}${t("contact")}</button></div><h2>${t("aboutTrip")}</h2>${[
-      ["pickup", p.from + " · Centre"],
-      ["dropoff", p.to + " · Centre"],
-      ["duration", p.duration],
-      ["vehicle", p.vehicle],
+    `<div class="trip-cover"><img src="${photos[p.photo || 0]}" alt="${esc(p.to)}"><span>${t("together")}</span></div><div class="detail-layout"><section class="panel"><div class="section-heading"><h2>${esc(p.from)} → ${esc(p.to)}</h2><strong class="price">${money(p.price)}</strong></div><p>${dateText(p.date)} · ${p.time}</p><div class="traveler-row">${avatar(p.name)}<div><h3>${esc(p.name)}</h3>${stars(p.rating)} · ${p.reviews} ${t("rating")}</div><button class="text-link" data-action="contact-traveler" data-value="${esc(p.name)}">${icon("chat")}${t("contact")}</button></div>${trustChips(p)}${matchChip(p, search.from, search.to) ? `<div class="notice along-notice">${matchChip(p, search.from, search.to)}<span>${t("alongTip")}</span></div>` : ""}<h2>${t("aboutTrip")}</h2>${[
+      ["pickup", p.pickup || p.from + " · Centre"],
+      ["dropoff", p.dropoff || p.to + " · Centre"],
+      ["routeFacts", routeFacts(p.from, p.to)],
+      ["vehicle", p.vehicleModel || t(p.vehicle)],
       ["capacity", freeSeats(p) + " · " + t("upTo") + " " + p.weight + " kg"],
     ]
       .map(
@@ -1207,19 +1247,18 @@ function send() {
   const labels = ["parcelStep1", "parcelStep2", "parcelStep3", "parcelStep4"];
   let body = "";
   if (draft.step === 1) {
-    body = `<h2>${t("parcelStep1")}</h2><div class="category-grid">${["documents", "small", "medium", "large"].map((k) => `<button type="button" class="category ${draft.type === k ? "active" : ""}" data-action="parcel-type" data-value="${k}"><span>${icon(k === "documents" ? "card" : "box")}</span>${t(k)}</button>`).join("")}</div><div class="form-grid dimensions-grid">${["length", "width", "height", "weight"].map((k) => field(t(k), k, draft[k], "number", `required min="0.1" step="0.1" max="${k === "weight" ? 20 : 200}"`)).join("")}</div><label class="form-label">${t("content")}<textarea name="content" maxlength="500" required>${esc(draft.content)}</textarea></label><label class="form-label">${t("notes")}<textarea name="notes" maxlength="500">${esc(draft.notes)}</textarea></label>`;
+    body = `<h2>${t("parcelStep1")}</h2><div class="category-grid">${["documents", "small", "medium", "large"].map((k) => `<button type="button" class="category ${draft.type === k ? "active" : ""}" data-action="parcel-type" data-value="${k}"><span>${icon(k === "documents" ? "card" : "box")}</span>${t(k)}</button>`).join("")}</div><div class="form-grid dimensions-grid">${["length", "width", "height", "weight"].map((k) => field(t(k), k, draft[k], "number", `required min="0.1" step="0.1" max="${k === "weight" ? 20 : 200}"`)).join("")}</div><label class="form-label">${t("content")}<textarea name="content" maxlength="500" required data-risk="send-risk" aria-describedby="send-risk">${esc(draft.content)}</textarea></label><div id="send-risk" aria-live="polite">${riskBox(draft.content)}</div><label class="form-label">${t("notes")}<textarea name="notes" maxlength="500">${esc(draft.notes)}</textarea></label>`;
   } else if (draft.step === 2) {
     body = `<h2>${t("parcelStep2")}</h2><div class="form-grid">${cityField(t("from"), "from", draft.from)}${cityField(t("to"), "to", draft.to)}${field(t("pickup"), "pickup", draft.pickup, "text", 'required maxlength="250"')}${field(t("dropoff"), "dropoff", draft.dropoff, "text", 'required maxlength="250"')}${field(t("recipient"), "recipient", draft.recipient, "text", 'required maxlength="80"')}${field(t("phone"), "phone", draft.phone, "tel", 'required maxlength="30"')}</div>${state.addresses.length ? `<button type="button" class="btn outline" data-action="pick-address">${t("chooseAddress")}</button>` : ""}`;
   } else if (draft.step === 3) {
     const matches = allTrips().filter(
       (p) =>
-        p.from === draft.from &&
-        p.to === draft.to &&
+        !!tripServes(p.from, p.to, draft.from, draft.to) &&
         p.date === draft.date &&
         p.weight >= Number(draft.weight) &&
         freeSeats(p) > 0,
     );
-    body = `<h2>${t("parcelStep3")}</h2><div class="form-grid">${field(t("deliveryDate"), "date", draft.date, "date", `required min="${today()}"`)}</div><div class="parcel-trip-options">${matches.length ? matches.map((p) => `<label class="trip-choice"><input type="radio" name="tripId" value="${esc(p.id)}" ${draft.tripId === p.id ? "checked" : ""}><div><b>${esc(p.name)} · ${p.time}</b><p>${esc(p.from)} → ${esc(p.to)}</p>${stars(p.rating)}</div><strong>${money(p.price)}</strong></label>`).join("") : `<p>${t("noTrips")}</p>`}</div><label class="check-label"><input type="radio" name="tripId" value="" ${!draft.tripId ? "checked" : ""}>${t("saveRequest")} · ${t("pending")}</label>`;
+    body = `<h2>${t("parcelStep3")}</h2><div class="form-grid">${field(t("deliveryDate"), "date", draft.date, "date", `required min="${today()}"`)}</div><div class="parcel-trip-options">${matches.length ? matches.map((p) => `<label class="trip-choice"><input type="radio" name="tripId" value="${esc(p.id)}" ${draft.tripId === p.id ? "checked" : ""}><div><b>${esc(p.name)} · ${p.time}</b><p>${esc(p.from)} → ${esc(p.to)}</p>${stars(p.rating)}${matchChip(p, draft.from, draft.to)}${trustChips(p)}</div><strong>${money(p.price)}</strong></label>`).join("") : `<p>${t("noTrips")}</p>${alertButton(draft.from, draft.to)}`}</div><label class="check-label"><input type="radio" name="tripId" value="" ${!draft.tripId ? "checked" : ""}>${t("saveRequest")} · ${t("pending")}</label>`;
   } else {
     body = `<h2>${t("parcelStep4")}</h2>${[
       ["from", draft.from],
@@ -1255,10 +1294,20 @@ function tracking() {
     `<div class="detail-layout"><section class="panel"><div class="section-heading"><h2>${t("parcel")} #${esc(p.id)}</h2>${badge(p.status)}</div><p>${t("estimated")} : ${dateText(p.date)} · ${p.time || "14:30"}</p><div class="timeline">${["taken", "confirmedDeparture", "onRoad", "handoff"].map((k, i) => `<div class="timeline-item ${!done && (p.status === "reserved" || i === 3) ? "pending" : ""}"><h3>${t(k)}</h3><p>${i === 0 ? "09:05 · " + esc(p.from) : i === 1 ? "10:15 · " + esc(p.from) + " → " + esc(p.to) : i === 3 ? t(done ? "delivered" : "codeRequired") : t("mapNote")}</p></div>`).join("")}</div>${!done && p.status !== "cancelled" ? `<button class="btn" data-action="handoff" data-value="${esc(p.id)}">${t("confirmDelivery")}</button>` : done ? btn(t("evaluate"), "review/" + p.id) : ""}</section><aside class="panel"><h2>${t("traveler")}</h2><div class="traveler-row">${avatar(p.name)}<div><b>${esc(p.name)}</b><p>${stars(4.9)}</p></div></div><button class="btn blue wide" data-action="contact-traveler" data-value="${esc(p.name)}">${icon("chat")}${t("contact")}</button><p>${t("safetySub")}</p>${localNote()}</aside></div>`
   );
 }
+/* Fair-price hint on the publish form: distance-based range + median of trips listed on the route. */
+function priceHint(from, to) {
+  const a = priceAdvice(from, to, allTrips());
+  if (!a) return "";
+  const market = a.count ? " " + fill("priceHintMarket", { n: a.count, median: ltr(money(a.median)) }) : "";
+  const pick = a.median ? round5(a.median) : a.suggested;
+  return `${icon("wallet")}<span>${fill("priceHint", { km: ltr(new Intl.NumberFormat(locale()).format(a.km)), low: ltr(money(a.low)), high: ltr(money(a.high)) })}${market} <small>${routeFacts(from, to)}</small></span><button type="button" class="btn outline" data-action="use-price" data-value="${pick}">${t("useSuggested")} · ${ltr(money(pick))}</button>`;
+}
 function publish() {
+  const pFrom = search.mode === "travel" ? search.from : "Rabat",
+    pTo = search.mode === "travel" ? search.to : "Casablanca";
   return (
     head("propose", t("publishSub")) +
-    `<form class="panel" id="publish-form"><div class="notice">${t("promoSub")}</div><div class="form-grid">${cityField(t("from"), "from", search.mode === "travel" ? search.from : "Rabat")}${cityField(t("to"), "to", search.mode === "travel" ? search.to : "Casablanca")}${field(t("departureDate"), "date", search.date || futureDate(1), "date", `min="${today()}" required`)}${field(t("time"), "time", "09:30", "time", "required")}${field(t("parcelCount"), "seats", 3, "number", 'min="1" max="20" required')}${field(t("maxWeight"), "weight", 10, "number", 'min="1" max="20" required')}<label class="form-label">${t("vehicle")}<select name="vehicle">${["car", "train", "bus"].map((k) => `<option value="${k}">${t(k)}</option>`).join("")}</select></label>${field(t("price") + " (MAD)", "price", 50, "number", 'min="10" max="2000" required')}${field(t("pickup"), "pickup", "", "text", 'maxlength="250"')}${field(t("dropoff"), "dropoff", "", "text", 'maxlength="250"')}<label class="form-label full">${t("notes")}<textarea name="notes" maxlength="500"></textarea></label></div><div class="publish-map"><h3>${icon("route")}${t("routePreview")}</h3><div id="publish-map">${googleMap({ from: search.mode === "travel" ? search.from : "Rabat", to: search.mode === "travel" ? search.to : "Casablanca" })}</div></div><div class="earnings-box"><b>${t("estimatedEarnings")}</b><strong id="earnings">${money(139.5)}</strong><small>${t("earningsNote")}</small></div>${localNote()}<button class="btn wide">${t("publishTrip")}${icon("arrow")}</button></form>`
+    `<form class="panel" id="publish-form"><div class="notice">${t("promoSub")}</div><div class="form-grid">${cityField(t("from"), "from", search.mode === "travel" ? search.from : "Rabat")}${cityField(t("to"), "to", search.mode === "travel" ? search.to : "Casablanca")}${field(t("departureDate"), "date", search.date || futureDate(1), "date", `min="${today()}" required`)}${field(t("time"), "time", "09:30", "time", "required")}${field(t("parcelCount"), "seats", 3, "number", 'min="1" max="20" required')}${field(t("maxWeight"), "weight", 10, "number", 'min="1" max="20" required')}<label class="form-label">${t("vehicle")}<select name="vehicle">${["car", "train", "bus"].map((k) => `<option value="${k}">${t(k)}</option>`).join("")}</select></label>${field(t("price") + " (MAD)", "price", 50, "number", 'min="10" max="2000" required')}${field(t("pickup"), "pickup", "", "text", 'maxlength="250"')}${field(t("dropoff"), "dropoff", "", "text", 'maxlength="250"')}<label class="form-label full">${t("notes")}<textarea name="notes" maxlength="500"></textarea></label></div><div class="price-hint" id="price-hint" aria-live="polite">${priceHint(pFrom, pTo)}</div><div class="publish-map"><h3>${icon("route")}${t("routePreview")}</h3><div id="publish-map">${googleMap({ from: search.mode === "travel" ? search.from : "Rabat", to: search.mode === "travel" ? search.to : "Casablanca" })}</div></div><div class="earnings-box"><b>${t("estimatedEarnings")}</b><strong id="earnings">${money(139.5)}</strong><small>${t("earningsNote")}</small></div>${localNote()}<button class="btn wide">${t("publishTrip")}${icon("arrow")}</button></form>`
   );
 }
 function traveler() {
@@ -1316,7 +1365,7 @@ function notifications() {
         ? list
             .map(
               (n) =>
-                `<button class="notification-row ${n.read ? "read" : ""}" data-action="read-notification" data-value="${esc(n.id)}"><span class="notification-icon">${icon(n.key === "newMessage" ? "chat" : n.key === "paymentConfirmed" ? "wallet" : "box")}</span><span><b>${t(n.key)}</b><small>${esc(n.body)}</small></span>${n.read ? "" : '<i class="unread-dot"></i>'}</button>`,
+                `<button class="notification-row ${n.read ? "read" : ""}" data-action="read-notification" data-value="${esc(n.id)}"><span class="notification-icon">${icon(n.key === "newMessage" ? "chat" : n.key === "paymentConfirmed" ? "wallet" : n.key === "routeAlert" ? "bell" : "box")}</span><span><b>${t(n.key)}</b><small>${esc(n.body)}</small></span>${n.read ? "" : '<i class="unread-dot"></i>'}</button>`,
             )
             .join("")
         : `<div class="empty">${t("empty")}</div>`,
@@ -2650,6 +2699,7 @@ function setupPage() {
       if (!["from", "to"].includes(e.target.name)) return;
       const f = e.currentTarget;
       if (f.elements.from.value === f.elements.to.value) return;
+      $("#price-hint").innerHTML = priceHint(f.elements.from.value, f.elements.to.value);
       $("#publish-map").innerHTML = googleMap({
         from: f.elements.from.value,
         to: f.elements.to.value,
@@ -2954,6 +3004,41 @@ const actions = {
     filters.all = true;
     search.date = "";
     go("results");
+  },
+  "alert-add": (el) => {
+    const [from, to] = el.dataset.value.split("|");
+    state.alerts = routeAlerts().filter((a) => !(a.from === from && a.to === to));
+    if (state.alerts.length >= 10) return toast(t("err_too_many_alerts"));
+    state.alerts.push({ id: id("AL"), from, to });
+    persist();
+    toast(t("alertSaved"));
+    render();
+  },
+  "tools-swap": () => {
+    toolsRoute = { from: toolsRoute.to, to: toolsRoute.from };
+    $$("[data-tool]").forEach((s) => (s.value = toolsRoute[s.name]));
+    $("#tools-price").innerHTML = toolsPrice();
+  },
+  "tools-search": () => {
+    search.from = toolsRoute.from;
+    search.to = toolsRoute.to;
+    search.date = "";
+    filters.all = false;
+    go("results");
+  },
+  "use-price": (el) => {
+    const input = $('#publish-form [name="price"]');
+    if (!input) return;
+    input.value = el.dataset.value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.focus();
+  },
+  "alert-remove": (el) => {
+    const [from, to] = el.dataset.value.split("|");
+    state.alerts = routeAlerts().filter((a) => !(a.from === from && a.to === to));
+    persist();
+    toast(t("alertRemoved"));
+    render();
   },
   filters: filterModal,
   "clear-filters": () => {
@@ -3345,6 +3430,10 @@ const submits = {
   "checkout-form": confirmBooking,
   "parcel-form": (form) => {
     captureDraft(form);
+    if (draft.step === 1 && contentRisk(draft.content).level === "block") {
+      form.elements.content.focus();
+      return toast(t("riskBlocked"));
+    }
     if (draft.step === 2 && draft.from === draft.to)
       return toast(t("sameCity"));
     if (draft.step < 4) {
@@ -3585,6 +3674,10 @@ window.addEventListener("beforeprint", () =>
 document.addEventListener("change", (event) => {
   const target = event.target;
   if (target.matches("[data-language]")) setLanguage(target.value);
+  if (target.matches("[data-tool]")) {
+    toolsRoute[target.name] = target.value;
+    $("#tools-price").innerHTML = toolsPrice();
+  }
   if (target.matches("[data-pref]")) {
     state.preferences[target.dataset.pref] = target.checked;
     persist();

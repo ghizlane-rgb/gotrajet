@@ -1,0 +1,385 @@
+/* =====================================================================
+   GOTRAJET smart features: trust chips, along-the-way matching, route alerts,
+   prohibited-items check, price guide and the "Before you send" landing tools.
+   Uses only the existing brand tokens (style.css + site.css), so dark mode follows.
+   ===================================================================== */
+
+:root {
+  --danger: #a63f3f;
+  --danger-soft: #fce9e9;
+  /* Brand green darkened for small text on light green (WCAG AA 4.5:1) */
+  --green-text: #136b55;
+}
+body.dark {
+  --danger: #f08c8c;
+  --danger-soft: #3b2226;
+  --green-text: var(--green);
+}
+
+/* ---------- Chips ---------- */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 2px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.chip .ico {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.chip-trust {
+  background: var(--green-soft);
+  color: var(--green-text);
+}
+.chip-along {
+  background: var(--orange-soft);
+  color: #a85a10;
+  white-space: normal;
+}
+body.dark .chip-along {
+  color: var(--orange);
+}
+.chip button {
+  margin-inline-start: 2px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+}
+.chip button:hover,
+.chip button:focus-visible {
+  background: rgba(23, 98, 161, 0.15);
+}
+
+/* Trip cards: keep the chips inside the card padding */
+.route-card .chip-row {
+  margin: 6px 0 10px;
+}
+
+/* A trip found "on the way" stands out a little, without competing with direct trips */
+.result-row.is-along {
+  border-inline-start: 3px solid var(--orange);
+}
+.along-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+.along-notice > span:last-child {
+  flex: 1 1 220px;
+  font-size: 0.88rem;
+}
+
+/* ---------- Route alerts ---------- */
+.alerts-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+.alerts-strip > b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+.alerts-strip > b .ico {
+  width: 16px;
+  height: 16px;
+}
+.btn.alert-on {
+  background: var(--green-soft);
+  color: var(--green-text);
+  border: 1px solid currentColor;
+}
+.empty-alert {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 36px 22px;
+  text-align: center;
+}
+.empty-alert h3 {
+  margin: 6px 0 0;
+}
+.empty-alert p {
+  margin: 0;
+}
+.empty-alert .detail-actions {
+  justify-content: center;
+  margin-top: 12px;
+}
+.empty-alert-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: var(--orange-soft);
+  color: var(--orange);
+}
+.empty-alert-icon .ico {
+  width: 26px;
+  height: 26px;
+}
+.parcel-trip-options > .btn {
+  margin-top: 10px;
+}
+
+/* ---------- Prohibited-items check ---------- */
+.risk-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 10px 0 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  animation: risk-in 0.2s var(--ease, ease-out);
+}
+.risk-box > .ico {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  margin-top: 1px;
+}
+.risk-box ul {
+  margin: 4px 0 0;
+  padding-inline-start: 18px;
+}
+.risk-box li + li {
+  margin-top: 2px;
+}
+.risk-box.ok {
+  background: var(--green-soft);
+  color: var(--green-text);
+  align-items: center;
+}
+.risk-box.caution {
+  background: var(--orange-soft);
+  color: var(--navy);
+}
+.risk-box.caution > .ico {
+  color: var(--orange);
+}
+.risk-box.block {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+@keyframes risk-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+/* ---------- Price hint on the publish form ---------- */
+.price-hint:empty {
+  display: none;
+}
+.price-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin: 16px 0 4px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--blue-soft);
+  color: var(--navy);
+  font-size: 0.92rem;
+}
+.price-hint > .ico {
+  width: 20px;
+  height: 20px;
+  color: var(--blue);
+  flex: none;
+}
+.price-hint > span {
+  flex: 1 1 260px;
+}
+.price-hint small {
+  display: block;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.price-hint .btn {
+  flex: none;
+  min-height: 40px;
+  padding: 6px 16px;
+  white-space: nowrap;
+}
+
+/* ---------- Landing: "Before you send" tools ---------- */
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.tool-card {
+  display: flex;
+  flex-direction: column;
+  padding: 28px;
+  border-radius: var(--radius, 16px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+}
+.tool-card h3 {
+  margin: 0 0 6px;
+}
+.tool-card > p {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+.tool-card:nth-child(2) .why-icon {
+  background: var(--orange-soft);
+  color: var(--orange);
+}
+.tool-card textarea {
+  width: 100%;
+  min-height: 92px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-alt);
+  color: var(--navy);
+  font: inherit;
+  resize: vertical;
+}
+.tool-card textarea:focus,
+.tool-route select:focus {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+.tool-card .map-note {
+  margin-top: auto;
+  padding-top: 12px;
+}
+.tool-route {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.tool-route label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.tool-route select {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-alt);
+  color: var(--navy);
+  font: inherit;
+  font-weight: 700;
+}
+.tool-route .swap {
+  height: 46px;
+}
+.tool-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 16px;
+}
+.tool-facts > div {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-alt);
+}
+.tool-facts dt {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.tool-facts dd {
+  margin: 4px 0 0;
+  font-weight: 800;
+  color: var(--navy);
+  font-variant-numeric: tabular-nums;
+}
+.tool-facts dd small {
+  font-weight: 600;
+  color: var(--muted);
+}
+.tool-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.tool-foot > span {
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .tools-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 560px) {
+  .tool-card {
+    padding: 20px;
+  }
+  .tool-facts {
+    grid-template-columns: 1fr;
+  }
+  .tool-facts > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .tool-facts dd {
+    margin: 0;
+    text-align: end;
+  }
+  .tool-foot .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .price-hint .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .risk-box {
+    animation: none;
+  }
+}

@@ -243,3 +243,15 @@ class AuditLog(Base):
     target: Mapped[str] = mapped_column(String(60))
     detail: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now)
+
+
+class RouteAlert(Base):
+    """"Tell me when someone travels Fès → Tanger": a sender is notified when a matching trip is published
+    (direct, or a longer trip that passes through both cities). New table, so existing databases need no migration."""
+    __tablename__ = "route_alerts"
+    __table_args__ = (UniqueConstraint("user_id", "from_city", "to_city"),)
+    id: Mapped[str] = mapped_column(String(20), primary_key=True, default=lambda: new_id("A"))
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    from_city: Mapped[str] = mapped_column(String(40))
+    to_city: Mapped[str] = mapped_column(String(40))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now)

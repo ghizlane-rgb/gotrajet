@@ -12,3 +12,6 @@ __pycache__/
 
 # Vercel CLI link (per computer)
 .vercel/
+
+.vercel
+.env*

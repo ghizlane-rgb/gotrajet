@@ -20,6 +20,51 @@ DOC_KINDS = ["id", "photo", "license", "vehicle"]
 TRAVELER_REQUIRED_DOCS = ["id", "photo"]
 
 
+# ---------- Road network (along-the-way matching, distances) ----------
+# Main road links between the served cities, in km (approximate, motorway / national road).
+# Keep in sync with ROAD_LINKS in dist/js/smart.js.
+ROAD_LINKS = [
+    ("Tanger", "Rabat", 250), ("Rabat", "Casablanca", 87), ("Casablanca", "Marrakech", 240),
+    ("Marrakech", "Agadir", 250), ("Rabat", "Meknès", 140), ("Meknès", "Fès", 60),
+    ("Fès", "Oujda", 340), ("Tanger", "Meknès", 290), ("Tanger", "Fès", 300),
+]
+
+
+def road_path(a: str, b: str) -> tuple[list[str], int]:
+    """Shortest road path a → b (cities in order) and its length in km. ([], 0) when unknown."""
+    if a == b or a not in CITIES or b not in CITIES:
+        return [], 0
+    graph: dict[str, list[tuple[str, int]]] = {c: [] for c in CITIES}
+    for x, y, km in ROAD_LINKS:
+        graph[x].append((y, km))
+        graph[y].append((x, km))
+    dist, prev, todo = {a: 0}, {}, set(CITIES)
+    while todo:
+        city = min(todo, key=lambda c: (dist.get(c, 10**9), CITIES.index(c)))
+        if dist.get(city, 10**9) >= 10**9:
+            break
+        todo.discard(city)
+        for nxt, km in graph[city]:
+            if dist[city] + km < dist.get(nxt, 10**9):
+                dist[nxt], prev[nxt] = dist[city] + km, city
+    if b not in dist:
+        return [], 0
+    path = [b]
+    while path[-1] != a:
+        path.append(prev[path[-1]])
+    return path[::-1], dist[b]
+
+
+def trip_serves(trip_from: str, trip_to: str, a: str, b: str) -> str | None:
+    """'direct' when the trip is exactly a → b, 'along' when the trip passes through a then b, else None."""
+    if (trip_from, trip_to) == (a, b):
+        return "direct"
+    path, _ = road_path(trip_from, trip_to)
+    if a in path and b in path and path.index(a) < path.index(b):
+        return "along"
+    return None
+
+
 def mad(cents: int) -> float:
     return round(cents / 100, 2)
 
@@ -180,10 +225,23 @@ def trip_load(db: Session, trip: Trip) -> tuple[int, float]:
     return int(count), float(kg)
 
 
+def delivered_count(db: Session, traveler_id: str) -> int:
+    """Parcels this traveller has delivered (confirmed with the recipient's code)."""
+    return int(db.scalar(
+        select(func.count(Parcel.id)).join(Trip).where(Trip.traveler_id == traveler_id, Parcel.status == "delivered")
+    ) or 0)
+
+
 def trip_out(db: Session, t: Trip, ratings: dict | None = None) -> dict:
     rating, reviews = (ratings or {}).get(t.traveler_id) or rating_of(db, t.traveler_id)
     used, _ = trip_load(db, t)
+    _, km = road_path(t.from_city, t.to_city)
     return {
+        # Trust facts computed from real records, never typed in by the traveller
+        "verified": is_verified_traveler(db, t.traveler),
+        "deliveries": delivered_count(db, t.traveler_id),
+        "memberSince": iso(t.traveler.created_at),
+        "distanceKm": km,
         "id": t.id,
         "travelerId": t.traveler_id,
         "name": t.traveler.name,

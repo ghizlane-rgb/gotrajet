@@ -1,6 +1,26 @@
 # GOTRAJET — Changes
 
-All changes made on **11 November 2026**, grouped by topic.
+## 18 November 2026 — Smart features (competitive gaps)
+
+Built after reviewing competitor platforms ([competitors.md](competitors.md)). Each feature works in the demo and with the real backend. Nothing is simulated.
+
+| Feature | Where | What it does |
+| --- | --- | --- |
+| Along-the-way matching | Search, results, parcel form step 3, `GET /api/trips` | A search A → B also finds longer trips that pass through A then B on the road network (e.g. Rabat → Agadir for Casablanca → Agadir). Shown with an "On the way" chip and listed after direct trips. Booking pre-fills the pickup and drop-off with the sender's cities. |
+| Route alerts | Results (empty state and toolbar), `GET/POST/DELETE /api/me/alerts`, new `route_alerts` table | "Alert me for this route": when a traveller publishes a matching trip (direct or passing through), the sender gets a `routeAlert` notification linking to the trip. Maximum 10 per account. |
+| Trust facts on trips | Trip cards, results, trip detail, parcel form | "ID verified" and "N successful deliveries / New traveller", computed by the server from approved documents and delivered parcels. They are not shown when the data is not available, so they cannot be faked. |
+| Prohibited-items check | Landing, parcel form step 1, booking form | The description is checked while typing (FR/EN/AR/Darija). Forbidden items (cash, jewellery, weapons, drugs, medicines, flammables, animals) block the step. Food, batteries, fragile items and perfume show packing advice. |
+| Price guide | Landing "How much does it cost?", publish form | Distance-based range, plus the median price of trips actually listed on the route. "Use" fills the price field. |
+| Distance and duration | Results, trip detail, tools | Road distance and ≈ driving time (80 km/h average) instead of "—". |
+| "Before you send" section | Landing `#tools`, nav "Prices & rules" | The two tools above, open to visitors without an account. |
+
+Files: `dist/js/smart.js` and `dist/css/smart.css` (new), `dist/js/app.js`, `dist/js/server.js`, `dist/index.html`, `backend/app/services.py`, `backend/app/routers/market.py`, `backend/app/models.py`.
+Tests: `backend/tests/test_matching.py`, `tests/smart_checks.py` (static demo), `tests/server_smart_e2e.py` (real backend, two users).
+The road network is in two places, `ROAD_LINKS` in `services.py` and in `smart.js`. Keep them identical.
+
+---
+
+All changes below were made on **11 November 2026**, grouped by topic.
 The colour palette was kept as it was: navy `#0b3052`, blue `#1762a1`, orange `#ff8616`, green `#19876c`, background `#f5f7fa`.
 
 ---

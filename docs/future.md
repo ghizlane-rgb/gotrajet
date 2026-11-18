@@ -17,13 +17,13 @@ Goal: the first real deliveries between Casablanca, Rabat, Marrakech, Fès, Tang
 
 ## Phase 2 — Better matching and trust
 
-- **Along-the-way matching:** a Casablanca → Agadir trip can also carry parcels for Marrakech (intermediate cities on the Google route).
-- **Suggested price** based on distance, size and weight, so travellers price fairly.
+- ✅ **Along-the-way matching** (done 18 Nov 2026, on a built-in road network; next: price per segment, Google route).
+- ✅ **Suggested price** based on distance and listed trips (done 18 Nov 2026; next: size and weight).
 - **Live tracking** from the traveller's phone during the trip, shown on the Google map.
 - **Photo at pickup and at handoff**, stored with the booking.
-- **Verified badges:** ID checked, phone checked, number of deliveries, response time.
+- **Verified badges:** ✅ ID checked and number of deliveries (done 18 Nov 2026); still to do: response time.
 - **Two-way reviews** with moderation and dispute resolution.
-- **Saved searches and alerts:** "tell me when someone drives Fès → Tanger this week".
+- ✅ **Saved searches and alerts:** "tell me when someone drives Fès → Tanger" (done 18 Nov 2026, in-app notification; next: SMS/email). More ideas: [competitors.md](competitors.md).
 
 ## Phase 3 — Mobile apps
 
